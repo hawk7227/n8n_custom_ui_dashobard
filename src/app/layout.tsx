@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "../lib/theme-context";
+import { Toaster } from "react-hot-toast";
+import PasswordGate from "../components/PasswordGate";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,11 +26,64 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <ThemeProvider>
+          <PasswordGate>
+            <div className="flex h-screen bg-background overflow-hidden">
+              {/* Navbar - Fixed at top with proper width */}
+            
+              
+              {/* Main content with top padding for navbar */}
+              <div className="flex-1 flex flex-col  w-full overflow-hidden">
+                {children}
+              </div>
+            </div>
+          </PasswordGate>
+          <Toaster 
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: 'oklch(0.205 0 0)',
+                color: 'oklch(0.985 0 0)',
+                border: '1px solid oklch(1 0 0 / 10%)',
+                boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2)',
+                borderRadius: '0.5rem',
+                padding: '0.75rem 1rem',
+              },
+              success: {
+                style: {
+                  background: 'oklch(0.205 0 0)',
+                  color: 'oklch(0.985 0 0)',
+                  border: '1px solid oklch(1 0 0 / 10%)',
+                  boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2)',
+                  borderRadius: '0.5rem',
+                },
+                iconTheme: {
+                  primary: 'oklch(0.922 0 0)',
+                  secondary: 'oklch(0.205 0 0)',
+                },
+              },
+              error: {
+                style: {
+                  background: 'oklch(0.205 0 0)',
+                  color: 'oklch(0.985 0 0)',
+                  border: '1px solid oklch(0.704 0.191 22.216)',
+                  boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2)',
+                  borderRadius: '0.5rem',
+                  padding: '0.75rem 1rem',
+                },
+                iconTheme: {
+                  primary: 'oklch(0.704 0.191 22.216)',
+                  secondary: 'oklch(0.985 0 0)',
+                },
+              },
+            }}
+          />
+        </ThemeProvider>
       </body>
     </html>
   );
