@@ -12,6 +12,7 @@ export default function LaunchCampaignLayout({
 
   return (
     <div className="flex h-screen bg-background">
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       <main className="flex-1 overflow-hidden">
         {children}
       </main>

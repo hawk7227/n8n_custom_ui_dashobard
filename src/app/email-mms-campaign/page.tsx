@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FaArrowLeft, FaEnvelope, FaEye, FaPaperPlane, FaImage, FaChevronDown, FaSpinner, FaMagic } from 'react-icons/fa';
+import { FaArrowLeft, FaEnvelope, FaEye, FaPaperPlane, FaImage, FaChevronDown, FaSpinner, FaMagic, FaGlobe } from 'react-icons/fa';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { supabase, Brand } from '@/lib/supabase';
+import { supabase, Brand, LandingPage } from '@/lib/supabase';
 import ImageSelector from '@/components/ImageSelector';
 
 interface LeadData {
@@ -56,8 +56,11 @@ interface CampaignForm {
 interface GenerateDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onGenerate: (contentType: string, userInput: string, includeImage: boolean, includePurchaseLink: boolean) => void;
+  onGenerate: (contentType: string, userInput: string, includeImage: boolean, includePurchaseLink: boolean, selectedLandingPage: LandingPage | null) => void;
   selectedBrand: Brand | null;
+  selectedLandingPage: LandingPage | null;
+  setSelectedLandingPage: (landingPage: LandingPage | null) => void;
+  landingPages: LandingPage[];
   isLoading: boolean;
   contentType: string;
 }
@@ -107,13 +110,17 @@ const GenerateDialog: React.FC<GenerateDialogProps> = ({
   onClose,
   onGenerate,
   selectedBrand,
+  selectedLandingPage,
+  setSelectedLandingPage,
+  landingPages,
   isLoading,
   contentType
 }) => {
   const [userInput, setUserInput] = useState('');
   const [showPrompts, setShowPrompts] = useState(true);
   const [includeImage, setIncludeImage] = useState(contentType === 'email_body');
-  const [includePurchaseLink, setIncludePurchaseLink] = useState(contentType === 'email_body');
+  const [includeLandingPage, setIncludeLandingPage] = useState(false);
+  const [selectedLandingPageForGeneration, setSelectedLandingPageForGeneration] = useState<LandingPage | null>(null);
 
   // Predefined prompts for each content type
   const predefinedPrompts = {
@@ -143,7 +150,7 @@ const GenerateDialog: React.FC<GenerateDialogProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (userInput.trim() && selectedBrand) {
-      onGenerate(contentType, userInput, includeImage, includePurchaseLink);
+      onGenerate(contentType, userInput, includeImage, false, includeLandingPage ? selectedLandingPageForGeneration : null);
     }
   };
 
@@ -151,7 +158,6 @@ const GenerateDialog: React.FC<GenerateDialogProps> = ({
     setUserInput('');
     setShowPrompts(true);
     setIncludeImage(contentType === 'email_body');
-    setIncludePurchaseLink(contentType === 'email_body');
     onClose();
   };
 
@@ -188,7 +194,6 @@ const GenerateDialog: React.FC<GenerateDialogProps> = ({
   useEffect(() => {
     const shouldIncludeAssets = contentType === 'email_body';
     setIncludeImage(shouldIncludeAssets);
-    setIncludePurchaseLink(shouldIncludeAssets);
   }, [contentType]);
 
   return (
@@ -216,6 +221,8 @@ const GenerateDialog: React.FC<GenerateDialogProps> = ({
                 </p>
               </div>
             )}
+
+
 
             {/* Collapsible Predefined Prompts */}
             <div className="space-y-2">
@@ -310,27 +317,86 @@ const GenerateDialog: React.FC<GenerateDialogProps> = ({
                   </div>
                 )}
 
-                {/* Purchase Link */}
-                {selectedBrand.product_link && (
+
+
+                {/* Landing Page Selection */}
+                <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
-                      id="includePurchaseLink"
-                      checked={includePurchaseLink}
-                      onChange={(e) => setIncludePurchaseLink(e.target.checked)}
+                      id="includeLandingPage"
+                      checked={includeLandingPage}
+                      onChange={(e) => setIncludeLandingPage(e.target.checked)}
                       className="rounded border-border"
                     />
-                    <Label htmlFor="includePurchaseLink" className="text-sm">
-                      🔗 Include purchase link
+                    <Label htmlFor="includeLandingPage" className="text-sm">
+                      🌐 Include landing page
                     </Label>
                   </div>
-                )}
+                  {includeLandingPage && (
+                    <div className="ml-6 space-y-2">
+                      <Label className="text-xs text-muted-foreground">Select landing page:</Label>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-between text-xs"
+                          >
+                            {selectedLandingPageForGeneration ? (
+                              selectedLandingPageForGeneration.name || `Landing Page #${String(selectedLandingPageForGeneration.id).slice(-8)}`
+                            ) : (
+                              'Select a landing page'
+                            )}
+                            <FaChevronDown className="text-xs" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-64 max-h-[200px] overflow-y-auto">
+                          {landingPages.map((landingPage) => (
+                            <DropdownMenuItem
+                              key={landingPage.id}
+                              onClick={() => {
+                                setSelectedLandingPageForGeneration(landingPage);
+                                setSelectedLandingPage(landingPage);
+                              }}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex flex-col items-start">
+                                <span className="text-sm">{landingPage.name || `Landing Page #${String(landingPage.id).slice(-8)}`}</span>
+                                {landingPage.brand && (
+                                  <span className="text-xs text-muted-foreground">Brand: {landingPage.brand}</span>
+                                )}
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+                          {landingPages.length === 0 && (
+                            <DropdownMenuItem disabled>
+                              No landing pages found
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {selectedLandingPageForGeneration && (
+                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                          <p className="text-xs text-blue-700 dark:text-blue-300">
+                            Selected: {selectedLandingPageForGeneration.name || `Landing Page #${String(selectedLandingPageForGeneration.id).slice(-8)}`}
+                          </p>
+                          {selectedLandingPageForGeneration.brand && (
+                            <p className="text-xs text-blue-600 dark:text-blue-400">
+                              Brand: {selectedLandingPageForGeneration.brand}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* No Assets Warning */}
-                {(!selectedBrand.product_images || selectedBrand.product_images.length === 0) && !selectedBrand.product_link && (
+                {(!selectedBrand.product_images || selectedBrand.product_images.length === 0) && (
                   <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                     <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                      ℹ️ No brand assets available. You can still generate content without images or purchase links.
+                      ℹ️ No brand assets available. You can still generate content without images.
                     </p>
                   </div>
                 )}
@@ -849,6 +915,9 @@ export default function EmailMMSCampaignPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
   const [fetchingBrands, setFetchingBrands] = useState(false);
+  const [landingPages, setLandingPages] = useState<LandingPage[]>([]);
+  const [selectedLandingPage, setSelectedLandingPage] = useState<LandingPage | null>(null);
+  const [fetchingLandingPages, setFetchingLandingPages] = useState(false);
   const [campaigns, setCampaigns] = useState<{ id: string; name: string }[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('all');
   
@@ -865,7 +934,7 @@ export default function EmailMMSCampaignPage() {
     recipientPhone: '',
     campaignType: 'both',
     imageUrl: '',
-    sendEmailAsImage: false,
+    sendEmailAsImage: true, // Default to true for email body
   });
   
   // Generate dialog state
@@ -928,9 +997,32 @@ export default function EmailMMSCampaignPage() {
     }
   };
 
-  // Load brands on component mount
+  // Fetch landing pages from Supabase
+  const fetchLandingPages = async () => {
+    try {
+      setFetchingLandingPages(true);
+      const { data, error } = await supabase
+        .from('landingpages')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching landing pages:', error);
+        return;
+      }
+
+      setLandingPages(data || []);
+    } catch (error) {
+      console.error('Error fetching landing pages:', error);
+    } finally {
+      setFetchingLandingPages(false);
+    }
+  };
+
+  // Load brands and landing pages on component mount
   useEffect(() => {
     fetchBrands();
+    fetchLandingPages();
   }, []);
 
   // Check for campaign ID in URL and load campaign data
@@ -978,6 +1070,21 @@ export default function EmailMMSCampaignPage() {
           setSelectedBrand(brandData);
         }
       }
+
+      // Load the associated landing page
+      if (data.landing_page_id) {
+        const { data: landingPageData, error: landingPageError } = await supabase
+          .from('landingpages')
+          .select('*')
+          .eq('id', data.landing_page_id)
+          .single();
+
+        if (!landingPageError && landingPageData) {
+          setSelectedLandingPage(landingPageData);
+        }
+      }
+
+
 
       // Update form data with campaign data
       setFormData({
@@ -1050,9 +1157,9 @@ export default function EmailMMSCampaignPage() {
   // Update form when brand is selected
   const handleBrandChange = (brand: Brand) => {
     setSelectedBrand(brand);
-    
-    
   };
+
+
 
   // Fetch lead data from API
   useEffect(() => {
@@ -1147,11 +1254,7 @@ export default function EmailMMSCampaignPage() {
     }
   };
 
-  const handleSendCampaign = () => {
-    // TODO: Implement campaign sending logic
-    console.log('Sending campaign:', formData);
-    alert('Campaign sent successfully!');
-  };
+
 
   const handleTestCampaign = () => {
     if (formData.campaignType === 'email' || formData.campaignType === 'both') {
@@ -1182,13 +1285,13 @@ export default function EmailMMSCampaignPage() {
           const imageUrl = await convertHtmlToImage(emailBodyContent);
           console.log('Email converted to image:', imageUrl);
           
-          // Check if we have a purchase link from the selected brand
-          const purchaseLink = selectedBrand?.product_link;
+          // Check if we have a landing page URL from the selected landing page
+          const landingPageUrl = selectedLandingPage ? `https://landing-page-bulder.vercel.app/landing/${selectedLandingPage.session_id}` : null;
           
           // Replace the email body with the image, optionally wrapped in a link
-          if (purchaseLink) {
-            emailBodyContent = `<a href="${purchaseLink}" target="_blank" style="display: block; text-decoration: none;">
-              <img src="${imageUrl}" alt="Email Content - Click to purchase" style="max-width: 100%; height: auto; cursor: pointer;" />
+          if (landingPageUrl) {
+            emailBodyContent = `<a href="${landingPageUrl}" target="_blank" style="display: block; text-decoration: none;">
+              <img src="${imageUrl}" alt="Email Content - Click to view landing page" style="max-width: 100%; height: auto; cursor: pointer;" />
             </a>`;
           } else {
             emailBodyContent = `<img src="${imageUrl}" alt="Email Content" style="max-width: 100%; height: auto;" />`;
@@ -1337,6 +1440,9 @@ export default function EmailMMSCampaignPage() {
         status: 'draft',
         brand_id: selectedBrand?.id,
         brand_name: selectedBrand?.brand_name,
+        landing_page_id: selectedLandingPage?.id || null,
+        landing_page_name: selectedLandingPage?.name || null,
+        landing_page_url: selectedLandingPage ? `https://landing-page-bulder.vercel.app/landing/${selectedLandingPage.session_id}` : null,
         email_subject: formData.subject,
         email_body: formData.emailBody,
         send_email_as_image: formData.sendEmailAsImage,
@@ -1345,7 +1451,7 @@ export default function EmailMMSCampaignPage() {
         selected_campaign_filter: selectedCampaignId === 'all' ? 'All Campaigns' : campaigns.find(c => c.id === selectedCampaignId)?.name || 'Unknown',
         total_recipients: filteredLeads.length,
         created_by: 'User', // You can update this with actual user info
-        tags: [selectedBrand?.brand_name, formData.campaignType],
+        tags: [selectedBrand?.brand_name, formData.campaignType, selectedLandingPage?.name].filter(Boolean),
         emails_sent: 0,
         emails_delivered: 0,
         emails_opened: 0,
@@ -1501,7 +1607,7 @@ export default function EmailMMSCampaignPage() {
   };
 
   // Handle content generation
-  const handleGenerateContent = async (contentType: string, userInput: string, includeImage: boolean, includePurchaseLink: boolean) => {
+  const handleGenerateContent = async (contentType: string, userInput: string, includeImage: boolean, includePurchaseLink: boolean, selectedLandingPageForGeneration: LandingPage | null) => {
     if (!selectedBrand) {
       alert('Please select a brand first');
       return;
@@ -1522,9 +1628,11 @@ export default function EmailMMSCampaignPage() {
           brand_name: selectedBrand.brand_name,
           brand_content: selectedBrand.brand_content || '',
           include_image: includeImage,
-          include_purchase_link: includePurchaseLink,
+          include_purchase_link: false,
           product_images: selectedBrand.product_images || [],
-          product_link: selectedBrand.product_link || ''
+          product_link: '',
+          landing_page_url: selectedLandingPageForGeneration ? `https://landing-page-bulder.vercel.app/landing/${selectedLandingPageForGeneration.session_id}` : null,
+          landing_page_name: selectedLandingPageForGeneration?.name || null
         }),
       });
 
@@ -1671,7 +1779,7 @@ export default function EmailMMSCampaignPage() {
       <div className="bg-muted/20 border-b border-border flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col gap-4">
-            {/* Brand and Campaign Selection */}
+            {/* Brand, Landing Page and Campaign Selection */}
             <div className="flex flex-col sm:flex-row gap-4">
               {/* Brand Selection */}
               <div className="flex items-center gap-4">
@@ -1714,6 +1822,8 @@ export default function EmailMMSCampaignPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+
+
 
               {/* Campaign Filter */}
               <div className="flex items-center gap-4">
@@ -1911,8 +2021,8 @@ export default function EmailMMSCampaignPage() {
                     </div>
                   )}
 
-                  {/* Personalization Toggle - REMOVED */}
-                  
+
+
                   {/* Email Subject */}
                   {(formData.campaignType === 'email' || formData.campaignType === 'both') && (
                     <div className="space-y-2">
@@ -1980,7 +2090,7 @@ export default function EmailMMSCampaignPage() {
                         rows={6}
                       />
                       
-                      {/* Send Email as Image Option */}
+                      {/* Send Email as Image Option - Default checked */}
                       <div className="flex items-center space-x-2 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
                         <input
                           type="checkbox"
@@ -1990,7 +2100,7 @@ export default function EmailMMSCampaignPage() {
                           className="rounded border-border"
                         />
                         <Label htmlFor="sendEmailAsImage" className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                          📸 Send Email as Image
+                          📸 Send Email as Image (Recommended)
                         </Label>
                       </div>
                       <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -2010,6 +2120,7 @@ export default function EmailMMSCampaignPage() {
                                 🔗 Image will be clickable and link to purchase page
                               </span>
                             )}
+
                           </p>
                         )}
                       </div>
@@ -2208,9 +2319,9 @@ export default function EmailMMSCampaignPage() {
                             <p className="text-sm text-gray-600 dark:text-gray-400">
                               Email content will be converted to an image
                             </p>
-                            {selectedBrand?.product_link && (
-                              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                                🔗 Image will be clickable and link to purchase page
+                            {selectedLandingPage && (
+                              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                🌐 Image will be clickable and link to landing page
                               </p>
                             )}
                             <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
@@ -2240,15 +2351,15 @@ export default function EmailMMSCampaignPage() {
                     </div>
                   )}
 
-                                        {/* MMS Preview */}
-                      {(formData.campaignType === 'sms' || formData.campaignType === 'both') && (
-                        <div className="border rounded-lg p-6 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900/20">
-                          <div className="flex items-center gap-2 mb-6">
-                            <FaImage className="text-blue-600" />
-                            <span className="text-lg font-semibold">MMS Preview</span>
-                          </div>
-                      
-                                            {/* Mobile Phone Mockup */}
+                  {/* MMS Preview */}
+                  {(formData.campaignType === 'sms' || formData.campaignType === 'both') && (
+                    <div className="border rounded-lg p-6 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900/20">
+                      <div className="flex items-center gap-2 mb-6">
+                        <FaImage className="text-blue-600" />
+                        <span className="text-lg font-semibold">MMS Preview</span>
+                      </div>
+                  
+                      {/* Mobile Phone Mockup */}
                       <div className="mx-auto w-80 h-[600px] bg-white rounded-3xl shadow-2xl border-8 border-gray-800 overflow-hidden">
                         {/* Phone Screen Content */}
                         <div className="w-full h-full bg-white flex flex-col">
@@ -2339,7 +2450,7 @@ export default function EmailMMSCampaignPage() {
                           </div>
                         </div>
                       </div>
-                                            
+                                        
                     </div>
                   )}
 
@@ -2355,6 +2466,7 @@ export default function EmailMMSCampaignPage() {
                         <Label className="text-muted-foreground">Type</Label>
                         <p className="font-medium capitalize">{formData.campaignType}</p>
                       </div>
+
                     </div>
                   </div>
                 </CardContent>
@@ -2370,6 +2482,9 @@ export default function EmailMMSCampaignPage() {
         onClose={() => setIsGenerateDialogOpen(false)}
         onGenerate={handleGenerateContent}
         selectedBrand={selectedBrand}
+        selectedLandingPage={selectedLandingPage}
+        setSelectedLandingPage={setSelectedLandingPage}
+        landingPages={landingPages}
         isLoading={isGenerating}
         contentType={currentContentType}
       />
