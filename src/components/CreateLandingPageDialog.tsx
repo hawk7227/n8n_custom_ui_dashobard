@@ -44,7 +44,7 @@ export default function CreateLandingPageDialog({
       setFetchingBrands(true);
       const { data, error } = await supabase
         .from('brands')
-        .select('id, brand_name, created_at')
+        .select('id, brand_name, brand_content, brand_uuid, created_at')
         .order('brand_name', { ascending: true });
 
       if (error) {

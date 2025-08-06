@@ -13,13 +13,29 @@ interface LandingPageData {
   created_at?: string;
 }
 
-export default function LandingPage({ params }: { params: { sessionId: string } }) {
+interface LandingPageProps {
+  params: Promise<{ sessionId: string }>;
+}
+
+export default function LandingPage({ params }: LandingPageProps) {
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [landingPage, setLandingPage] = useState<LandingPageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Handle async params
+  useEffect(() => {
+    const getSessionId = async () => {
+      const { sessionId: id } = await params;
+      setSessionId(id);
+    };
+    getSessionId();
+  }, [params]);
+
   useEffect(() => {
     const fetchLandingPage = async () => {
+      if (!sessionId) return;
+      
       try {
         setLoading(true);
         
@@ -27,7 +43,7 @@ export default function LandingPage({ params }: { params: { sessionId: string } 
         const { data, error } = await supabase
           .from('landingpages')
           .select('*')
-          .eq('session_id', params.sessionId)
+          .eq('session_id', sessionId)
           .single();
 
         if (error) {
@@ -50,10 +66,10 @@ export default function LandingPage({ params }: { params: { sessionId: string } 
       }
     };
 
-    if (params.sessionId) {
+    if (sessionId) {
       fetchLandingPage();
     }
-  }, [params.sessionId]);
+  }, [sessionId]);
 
   if (loading) {
     return (
@@ -72,7 +88,7 @@ export default function LandingPage({ params }: { params: { sessionId: string } 
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Landing Page Not Found</h1>
           <p className="text-gray-600">The requested landing page could not be found.</p>
-          <p className="text-sm text-gray-500 mt-2">Session ID: {params.sessionId}</p>
+          <p className="text-sm text-gray-500 mt-2">Session ID: {sessionId}</p>
         </div>
       </div>
     );

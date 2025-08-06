@@ -1,4 +1,6 @@
-import React from 'react';
+"use client";
+
+import React, { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 
 export default function LaunchCampaignLayout({
@@ -6,9 +8,11 @@ export default function LaunchCampaignLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [activeTab, setActiveTab] = useState('launch-campaign');
+
   return (
     <div className="flex h-screen bg-background">
-      <Sidebar />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       <main className="flex-1 overflow-hidden">
         {children}
       </main>
