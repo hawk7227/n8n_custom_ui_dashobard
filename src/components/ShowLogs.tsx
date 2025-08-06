@@ -172,7 +172,7 @@ export default function ShowLogs() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedFlow]);
+  }, [selectedFlow, flowConfig]);
 
   useEffect(() => {
     fetchLogs();

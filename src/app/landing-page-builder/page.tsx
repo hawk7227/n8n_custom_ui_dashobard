@@ -40,29 +40,6 @@ export default function LandingPageBuilderPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  useEffect(() => {
-    // Check if there's a session parameter in the URL
-    const sessionParam = searchParams.get('session');
-    
-    if (sessionParam) {
-      // Load existing session
-      setIsLoadingSession(true);
-      loadExistingSession(sessionParam);
-    } else {
-      // Generate or retrieve a unique session key for the chat session
-      let key = sessionStorage.getItem('landing_builder_session_key');
-      if (!key) {
-        key = uuidv4();
-        sessionStorage.setItem('landing_builder_session_key', key);
-      }
-      setSessionKey(key as string);
-    }
-  }, [searchParams, loadExistingSession]);
-
   // Function to load existing session from Supabase
   const loadExistingSession = useCallback(async (sessionId: string) => {
     try {
@@ -120,6 +97,29 @@ export default function LandingPageBuilderPage() {
       setIsLoadingSession(false);
     }
   }, [brandName]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    // Check if there's a session parameter in the URL
+    const sessionParam = searchParams.get('session');
+    
+    if (sessionParam) {
+      // Load existing session
+      setIsLoadingSession(true);
+      loadExistingSession(sessionParam);
+    } else {
+      // Generate or retrieve a unique session key for the chat session
+      let key = sessionStorage.getItem('landing_builder_session_key');
+      if (!key) {
+        key = uuidv4();
+        sessionStorage.setItem('landing_builder_session_key', key);
+      }
+      setSessionKey(key as string);
+    }
+  }, [searchParams, loadExistingSession]);
 
 
 
