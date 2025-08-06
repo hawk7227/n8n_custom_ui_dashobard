@@ -7,7 +7,7 @@ import { useAuth } from './PasswordGate';
 
 const tabs = [
   { name: 'Dashboard', key: 'dashboard', icon: FaTachometerAlt, path: '/dashboard' },
-  { name: 'Tools', key: 'tools', icon: FaTools, path: '/tools' },
+  { name: 'Campaigns', key: 'tools', icon: FaTools, path: '/tools' },
   { name: 'Brands', key: 'brands', icon: FaTag, path: '/brands' },
   { name: 'Chatbot', key: 'chatbot', icon: FaComments, path: '/chatbot' },
   { name: 'Landing Pages', key: 'landing-pages', icon: FaLandmark, path: '/landing-pages' },
