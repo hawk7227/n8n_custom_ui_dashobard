@@ -1,12 +1,28 @@
 import React, { useState } from 'react';
-import { FaAmazon, FaRobot, FaEnvelope, FaSms, FaTiktok, FaDatabase, FaCheckCircle, FaPlay, FaList } from 'react-icons/fa';
+import { 
+  FaAmazon, FaRobot, FaEnvelope, FaSms, FaTiktok, FaDatabase, FaCheckCircle, 
+  FaPlay, FaList, FaUsers, FaChartLine, FaFileAlt, FaCog, FaArrowRight,
+  FaRocket, FaBullhorn, FaVideo, FaCloudUploadAlt, FaEye, FaClock, FaBox
+} from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+
+// Function to generate UUID
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 
 export default function ToolsTab() {
   const [showPopup, setShowPopup] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [campaignName, setCampaignName] = useState('');
+  const [weblink, setWeblink] = useState('');
+  const [perPage, setPerPage] = useState(20);
   const router = useRouter();
 
   const handleLaunchCampaign = () => {
@@ -14,8 +30,26 @@ export default function ToolsTab() {
   };
 
   const confirmLaunchCampaign = () => {
+    if (!campaignName.trim() || !weblink.trim()) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
     setIsLoading(true);
-    fetch('https://evenbetterbuy.app.n8n.cloud/webhook/cb079c41-7937-430a-a73a-8aa0cfd94946')
+    const campaignId = generateUUID();
+    
+    fetch('https://evenbetterbuy.app.n8n.cloud/webhook/c3ce318e-0d2f-4051-88fa-3a4291e4a973', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        campaign_name: campaignName,
+        campaign_id: campaignId,
+        weblink: weblink,
+        per_page: perPage
+      })
+    })
       .then(response => {
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -26,6 +60,10 @@ export default function ToolsTab() {
         setIsLoading(false);
         setShowConfirmDialog(false);
         setShowPopup(true);
+        // Reset form fields
+        setCampaignName('');
+        setWeblink('');
+        setPerPage(20);
       })
       .catch(error => {
         console.error('Error launching campaign:', error);
@@ -36,6 +74,10 @@ export default function ToolsTab() {
 
   const cancelLaunchCampaign = () => {
     setShowConfirmDialog(false);
+    // Reset form fields
+    setCampaignName('');
+    setWeblink('');
+    setPerPage(20);
   };
 
   return (
@@ -49,82 +91,266 @@ export default function ToolsTab() {
       </div>
 
       {/* Flows */}
-      <div className="flex flex-col gap-8  flex-1 pb-8">
-        {/* Product Flow */}
+      <div className="flex flex-col gap-8 flex-1 pb-8">
+        {/* Leads Flow */}
         <div className="bg-muted/30 rounded-xl p-7 shadow-md flex flex-col gap-5 border border-border">
-          <div className="font-bold text-xl mb-2 text-foreground">Leads Flow</div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+              <FaUsers className="text-xl text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <div className="font-bold text-xl text-foreground">Leads Flow</div>
+              <div className="text-sm text-muted-foreground">Find and engage potential customers</div>
+            </div>
+          </div>
+          
+          {/* Flow Diagram */}
+          <div className="flex items-center justify-center mb-6 p-4 bg-card/50 rounded-lg border border-border">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-2">
+                  <FaRocket className="text-green-600 dark:text-green-400" />
+                </div>
+                <span className="text-xs text-center">Launch</span>
+              </div>
+              <FaArrowRight className="text-muted-foreground" />
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-2">
+                  <FaChartLine className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <span className="text-xs text-center">Results</span>
+              </div>
+              <FaArrowRight className="text-muted-foreground" />
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-2">
+                  <FaFileAlt className="text-purple-600 dark:text-purple-400" />
+                </div>
+                <span className="text-xs text-center">Logs</span>
+              </div>
+            </div>
+          </div>
+
           <div className="flex flex-wrap gap-5 items-center justify-start">
             {/* Launch Campaign */}
-            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border">
-              <FaPlay className="text-3xl mb-2 text-primary" />
-              <span className="font-semibold mb-2 text-foreground">Launch Campaign</span>
+            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-3">
+                <FaRocket className="text-2xl text-green-600 dark:text-green-400" />
+              </div>
+              <span className="font-semibold mb-2 text-foreground text-center">Launch Campaign</span>
               <button 
                 onClick={handleLaunchCampaign}
-                className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-xs font-bold mb-2 shadow-sm hover:bg-primary/90 transition-colors"
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-xs font-bold mb-2 shadow-sm hover:bg-primary/90 transition-colors flex items-center gap-2"
               >
+                <FaPlay className="text-xs" />
                 Launch
               </button>
-              <span className="text-xs text-muted-foreground">Start your campaign</span>
+              <span className="text-xs text-muted-foreground text-center">Start your campaign</span>
             </div>
+
             {/* Results of Campaigns */}
-            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border">
-              <FaCheckCircle className="text-3xl mb-2 text-green-600 dark:text-green-400" />
-              <span className="font-semibold mb-2 text-foreground">Results of Campaigns</span>
+            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-3">
+                <FaChartLine className="text-2xl text-blue-600 dark:text-blue-400" />
+              </div>
+              <span className="font-semibold mb-2 text-foreground text-center">Results of Campaigns</span>
               <button 
                 onClick={() => router.push('/results')}
-                className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-xs font-bold mb-2 shadow-sm hover:bg-primary/90 transition-colors"
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-xs font-bold mb-2 shadow-sm hover:bg-primary/90 transition-colors flex items-center gap-2"
               >
+                <FaEye className="text-xs" />
                 View Results
               </button>
-              <span className="text-xs text-muted-foreground">See analytics and outcomes</span>
+              <span className="text-xs text-muted-foreground text-center">See analytics and outcomes</span>
             </div>
+
             {/* Show Logs */}
-            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border">
-              <FaList className="text-3xl mb-2 text-primary" />
-              <span className="font-semibold mb-2 text-foreground">Show Logs</span>
+            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-3">
+                <FaFileAlt className="text-2xl text-purple-600 dark:text-purple-400" />
+              </div>
+              <span className="font-semibold mb-2 text-foreground text-center">Show Logs</span>
               <button 
                 onClick={() => router.push('/logs')}
-                className="border border-primary/30 text-primary px-4 py-1 rounded-full text-xs font-bold mb-2 shadow-sm hover:border-primary/50 transition-colors"
+                className="border border-primary/30 text-primary px-4 py-2 rounded-full text-xs font-bold mb-2 shadow-sm hover:border-primary/50 transition-colors flex items-center gap-2"
               >
+                <FaList className="text-xs" />
                 View Logs
               </button>
-              <span className="text-xs text-muted-foreground">Check campaign logs</span>
+              <span className="text-xs text-muted-foreground text-center">Check campaign logs</span>
             </div>
           </div>
         </div>
 
-        {/* Marketing Flow */}
-        <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-7 shadow-md flex flex-col gap-5 border border-amber-200 dark:border-amber-800">
-          <div className="font-bold text-xl mb-2 text-foreground">Marketing Flow</div>
-          <div className="flex flex-wrap gap-5 items-center justify-start">
-            {/* Generate SMS + Email */}
-            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border">
-              <div className="flex gap-2 mb-2">
-                <FaEnvelope className="text-2xl text-primary" />
-                <FaSms className="text-2xl text-primary" />
+
+
+        {/* Email/MMS Campaign Flow */}
+        <div className="bg-indigo-50 dark:bg-indigo-950/30 rounded-xl p-7 shadow-md flex flex-col gap-5 border border-indigo-200 dark:border-indigo-800">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
+              <FaEnvelope className="text-xl text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <div className="font-bold text-xl text-foreground">Email/MMS Campaign Flow</div>
+              <div className="text-sm text-muted-foreground">Send email and MMS campaigns to your audience</div>
+            </div>
+          </div>
+          
+          {/* Flow Diagram */}
+          <div className="flex items-center justify-center mb-6 p-4 bg-card/50 rounded-lg border border-indigo-200 dark:border-indigo-800">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-2">
+                  <FaRocket className="text-green-600 dark:text-green-400" />
+                </div>
+                <span className="text-xs text-center">Launch</span>
               </div>
-              <span className="font-semibold mb-2 text-foreground">Generate SMS + Email with AI</span>
-              <button className="border border-primary/30 text-primary px-4 py-1 rounded-full text-xs font-bold mb-2 shadow-sm">View</button>
-              <span className="text-xs text-muted-foreground">Send via Twilio + Mail</span>
+              <FaArrowRight className="text-muted-foreground" />
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-2">
+                  <FaChartLine className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <span className="text-xs text-center">Results</span>
+              </div>
+              <FaArrowRight className="text-muted-foreground" />
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-2">
+                  <FaFileAlt className="text-purple-600 dark:text-purple-400" />
+                </div>
+                <span className="text-xs text-center">Logs</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-5 items-center justify-start">
+            {/* Create Email/MMS Campaign */}
+            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-3">
+                <FaEnvelope className="text-2xl text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <span className="font-semibold mb-2 text-foreground text-center">Create Email/MMS Campaign</span>
+              <button 
+                onClick={() => router.push('/email-mms-campaign')}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-xs font-bold mb-2 shadow-sm hover:bg-primary/90 transition-colors flex items-center gap-2"
+              >
+                <FaCog className="text-xs" />
+                Create
+              </button>
+              <span className="text-xs text-muted-foreground text-center">Create your email/MMS campaign</span>
+            </div>
+
+            {/* Launch Campaign */}
+            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-3">
+                <FaRocket className="text-2xl text-green-600 dark:text-green-400" />
+              </div>
+              <span className="font-semibold mb-2 text-foreground text-center">Launch Campaign</span>
+              <button 
+                onClick={() => router.push('/launch-campaign')}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-xs font-bold mb-2 shadow-sm hover:bg-primary/90 transition-colors flex items-center gap-2"
+              >
+                <FaPlay className="text-xs" />
+                Launch
+              </button>
+              <span className="text-xs text-muted-foreground text-center">Launch your campaign</span>
+            </div>
+
+            {/* Results of Email/MMS Campaigns */}
+            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-3">
+                <FaChartLine className="text-2xl text-blue-600 dark:text-blue-400" />
+              </div>
+              <span className="font-semibold mb-2 text-foreground text-center">Results of Email/MMS Campaigns</span>
+              <button 
+                onClick={() => router.push('/email-mms-results')}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-xs font-bold mb-2 shadow-sm hover:bg-primary/90 transition-colors flex items-center gap-2"
+              >
+                <FaEye className="text-xs" />
+                View Results
+              </button>
+              <span className="text-xs text-muted-foreground text-center">See analytics and outcomes</span>
+            </div>
+
+            {/* Show Email/MMS Logs */}
+            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-3">
+                <FaFileAlt className="text-2xl text-purple-600 dark:text-purple-400" />
+              </div>
+              <span className="font-semibold mb-2 text-foreground text-center">Show Email/MMS Logs</span>
+              <button 
+                onClick={() => router.push('/logs')}
+                className="border border-primary/30 text-primary px-4 py-2 rounded-full text-xs font-bold mb-2 shadow-sm hover:border-primary/50 transition-colors flex items-center gap-2"
+              >
+                <FaList className="text-xs" />
+                View Logs
+              </button>
+              <span className="text-xs text-muted-foreground text-center">Check email/MMS campaign logs</span>
             </div>
           </div>
         </div>
 
         {/* TikTok Content Flow */}
         <div className="bg-green-50 dark:bg-green-950/30 rounded-xl p-7 shadow-md flex flex-col gap-5 border border-green-200 dark:border-green-800">
-          <div className="font-bold text-xl mb-2 text-foreground">TikTok Content Flow</div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+              <FaVideo className="text-xl text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <div className="font-bold text-xl text-foreground">TikTok Content Flow</div>
+              <div className="text-sm text-muted-foreground">Create and manage TikTok content</div>
+            </div>
+          </div>
+
+          {/* Flow Diagram */}
+          <div className="flex items-center justify-center mb-6 p-4 bg-card/50 rounded-lg border border-green-200 dark:border-green-800">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-2">
+                  <FaTiktok className="text-green-600 dark:text-green-400" />
+                </div>
+                <span className="text-xs text-center">Script</span>
+              </div>
+              <FaArrowRight className="text-muted-foreground" />
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-2">
+                  <FaDatabase className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <span className="text-xs text-center">Save</span>
+              </div>
+              <FaArrowRight className="text-muted-foreground" />
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-2">
+                  <FaCloudUploadAlt className="text-purple-600 dark:text-purple-400" />
+                </div>
+                <span className="text-xs text-center">Upload</span>
+              </div>
+            </div>
+          </div>
+
           <div className="flex flex-wrap gap-5 items-center justify-start">
             {/* Write TikTok Scripts */}
-            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border">
-              <FaTiktok className="text-3xl mb-2 text-primary" />
-              <span className="font-semibold mb-2 text-foreground">Write TikTok Scripts</span>
-              <button className="border border-primary/30 text-primary px-4 py-1 rounded-full text-xs font-bold mb-2 shadow-sm">View</button>
-              <span className="text-xs text-muted-foreground">Save Script to Supabase</span>
+            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-3">
+                <FaTiktok className="text-2xl text-green-600 dark:text-green-400" />
+              </div>
+              <span className="font-semibold mb-2 text-foreground text-center">Write TikTok Scripts</span>
+              <button className="border border-primary/30 text-primary px-4 py-2 rounded-full text-xs font-bold mb-2 shadow-sm hover:border-primary/50 transition-colors flex items-center gap-2">
+                <FaEye className="text-xs" />
+                View
+              </button>
+              <span className="text-xs text-muted-foreground text-center">AI-powered script generation</span>
             </div>
+
             {/* Save Script to Supabase */}
-            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border">
-              <FaDatabase className="text-3xl mb-2 text-primary" />
-              <span className="font-semibold mb-2 text-foreground">Save Script to Supabase</span>
+            <div className="flex flex-col items-center bg-card rounded-lg p-5 shadow min-w-[220px] border border-border hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-3">
+                <FaDatabase className="text-2xl text-blue-600 dark:text-blue-400" />
+              </div>
+              <span className="font-semibold mb-2 text-foreground text-center">Save Script to Supabase</span>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                <FaClock className="text-xs" />
+                <span>Auto-save enabled</span>
+              </div>
+              <span className="text-xs text-muted-foreground text-center">Secure cloud storage</span>
             </div>
           </div>
         </div>
@@ -135,10 +361,48 @@ export default function ToolsTab() {
         <div className="fixed top-0 left-0 w-full h-full bg-black/40 flex items-center justify-center z-50">
           <div className="bg-card rounded-2xl p-8 shadow-2xl flex flex-col items-center border border-border max-w-md mx-4">
             <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mb-4">
-              <FaRobot className="text-2xl text-amber-600 dark:text-amber-400" />
+              <FaRocket className="text-2xl text-amber-600 dark:text-amber-400" />
             </div>
-            <h2 className="text-xl font-bold mb-2 text-foreground text-center">Confirm Campaign Launch</h2>
-            <p className="text-muted-foreground mb-6 text-center">Are you sure you want to launch this campaign? This action cannot be undone.</p>
+            <h2 className="text-xl font-bold mb-2 text-foreground text-center">Campaign Details</h2>
+            <p className="text-muted-foreground mb-6 text-center">Please provide the campaign details to launch</p>
+            
+            <div className="w-full space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">campaign name *</label>
+                <input
+                  type="text"
+                  value={campaignName}
+                  onChange={(e) => setCampaignName(e.target.value)}
+                  placeholder="Enter campaign name"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Apollo Link *</label>
+                <input
+                  type="url"
+                  value={weblink}
+                  onChange={(e) => setWeblink(e.target.value)}
+                  placeholder="https://app.apollo.io/#/people?sortAscending=false&sortByField=recommendations_score&personLocations[]=United%20States&page=1&contactEmailStatusV2[]=verified"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Per Page</label>
+                <input
+                  type="number"
+                  value={perPage}
+                  onChange={(e) => setPerPage(parseInt(e.target.value) || 20)}
+                  min="1"
+                  max="100"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+            
             <div className="flex gap-3 w-full">
               <button
                 className={`flex-1 font-semibold py-2 px-4 rounded-lg border border-border transition-colors ${
@@ -190,6 +454,8 @@ export default function ToolsTab() {
           </div>
         </div>
       )}
+
+
     </div>
   );
 }

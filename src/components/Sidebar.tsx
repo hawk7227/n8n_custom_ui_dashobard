@@ -1,12 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { FaUserCircle, FaBars, FaTachometerAlt, FaTools, FaSignOutAlt } from 'react-icons/fa';
+import { useRouter, usePathname } from 'next/navigation';
+import { FaUserCircle, FaBars, FaTachometerAlt, FaTools, FaSignOutAlt, FaComments, FaLandmark, FaTag, FaImage, FaRocket, FaChartLine } from 'react-icons/fa';
 import { useAuth } from './PasswordGate';
 
 const tabs = [
-  { name: 'Dashboard', key: 'dashboard', icon: FaTachometerAlt },
-  { name: 'Tools', key: 'tools', icon: FaTools },
+  { name: 'Dashboard', key: 'dashboard', icon: FaTachometerAlt, path: '/dashboard' },
+  { name: 'Tools', key: 'tools', icon: FaTools, path: '/tools' },
+  { name: 'Brands', key: 'brands', icon: FaTag, path: '/brands' },
+  { name: 'Chatbot', key: 'chatbot', icon: FaComments, path: '/chatbot' },
+  { name: 'Landing Pages', key: 'landing-pages', icon: FaLandmark, path: '/landing-pages' },
+  { name: 'Images', key: 'images', icon: FaImage, path: '/images' },
 ];
 
 interface SidebarProps {
@@ -19,10 +24,27 @@ interface SidebarProps {
 export default function Sidebar({ activeTab, setActiveTab, isOpen, onToggle }: SidebarProps) {
   const [open, setOpen] = useState(false);
   const { onLogout } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
 
   // Use external state if provided, otherwise use internal state
   const sidebarOpen = isOpen !== undefined ? isOpen : open;
   const setSidebarOpen = onToggle || (() => setOpen(!open));
+
+  // Determine active tab based on current pathname
+  const getActiveTab = () => {
+    if (pathname === '/dashboard') return 'dashboard';
+    if (pathname === '/tools') return 'tools';
+    if (pathname === '/launch-campaign') return 'launch-campaign';
+    if (pathname === '/email-mms-results') return 'email-mms-results';
+    if (pathname === '/brands') return 'brands';
+    if (pathname === '/chatbot') return 'chatbot';
+    if (pathname === '/landing-pages') return 'landing-pages';
+    if (pathname === '/images') return 'images';
+    if (pathname === '/results') return 'results';
+    if (pathname === '/logs') return 'logs';
+    return 'dashboard';
+  };
 
   // Listen for sidebar toggle events from navbar
   useEffect(() => {
@@ -87,35 +109,37 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, onToggle }: S
             
             {tabs.map(tab => {
               const IconComponent = tab.icon;
+              const isActive = getActiveTab() === tab.key;
               return (
                 <button
                   key={tab.key}
                   onClick={() => {
                     setActiveTab(tab.key);
+                    router.push(tab.path);
                     // Close sidebar on mobile when tab is clicked
                     if (window.innerWidth < 768) {
                       setSidebarOpen();
                     }
                   }}
                   className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-left transition-all duration-300 group relative overflow-hidden
-                    ${activeTab === tab.key 
+                    ${isActive 
                       ? 'bg-primary/10 dark:bg-primary/20 text-primary shadow-md shadow-primary/20 border border-primary/20' 
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground hover:shadow-sm'
                     }`}
                 >
                   <div className={`p-1.5 rounded-md transition-all duration-300 ${
-                    activeTab === tab.key 
+                    isActive 
                       ? 'bg-primary text-primary-foreground' 
                       : 'bg-muted text-muted-foreground group-hover:bg-muted/80 group-hover:text-foreground'
                   }`}>
                     <IconComponent size={14} />
                   </div>
                   <span className="font-medium text-sm">{tab.name}</span>
-                  {activeTab === tab.key && (
+                  {isActive && (
                     <div className="ml-auto w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></div>
                   )}
                   <div className={`absolute inset-0 bg-gradient-to-r from-transparent to-primary/10 opacity-0 transition-opacity duration-300 ${
-                    activeTab === tab.key ? 'opacity-100' : 'group-hover:opacity-100'
+                    isActive ? 'opacity-100' : 'group-hover:opacity-100'
                   }`}></div>
                 </button>
               );

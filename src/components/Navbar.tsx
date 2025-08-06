@@ -44,7 +44,7 @@ export default function Navbar({ onSidebarToggle, showSidebarToggle = true }: Na
   return (
     <nav className="bg-background border-b border-border shadow-sm backdrop-blur-sm sticky top-0 z-40">
       <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-12">
+        <div className="flex items-center justify-between h-14">
           {/* Left Section */}
           <div className="flex items-center space-x-4">
             {/* Sidebar Toggle */}
@@ -58,11 +58,7 @@ export default function Navbar({ onSidebarToggle, showSidebarToggle = true }: Na
               </button>
             )}
             
-            {/* Breadcrumb/Title */}
-            <div className="hidden md:flex items-center space-x-2">
-              <span className="text-muted-foreground">/</span>
-              <h1 className="text-lg font-semibold text-foreground">Dashboard</h1>
-            </div>
+           
           </div>
 
           {/* Right Section */}

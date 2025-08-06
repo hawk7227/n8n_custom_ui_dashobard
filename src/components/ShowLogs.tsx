@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { FaSearch, FaFilter, FaDownload, FaEye, FaClock, FaCheckCircle, FaExclamationTriangle, FaInfoCircle, FaChevronDown, FaTimes } from 'react-icons/fa';
+import { FaSearch, FaFilter, FaDownload, FaEye, FaClock, FaCheckCircle, FaExclamationTriangle, FaInfoCircle, FaChevronDown, FaTimes, FaUsers, FaBox } from 'react-icons/fa';
 import {
   Table,
   TableBody,
@@ -21,6 +21,8 @@ interface LogEntry {
   details?: string;
 }
 
+type FlowType = 'leads' | 'bundle';
+
 export default function ShowLogs() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([]);
@@ -29,6 +31,7 @@ export default function ShowLogs() {
   const [selectedCampaign, setSelectedCampaign] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [selectedFlow, setSelectedFlow] = useState<FlowType>('leads');
   const exportRef = React.useRef<HTMLDivElement>(null);
   
   // Dialog state variables
@@ -36,6 +39,22 @@ export default function ShowLogs() {
   const [isDialogLoading, setIsDialogLoading] = useState(false);
   const [dialogContent, setDialogContent] = useState<any>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
+
+  // Flow configuration
+  const flowConfig = {
+    leads: {
+      workflowId: 'g6A1VMI4Mofkc3Mu',
+      name: 'Leads Flow',
+      icon: FaUsers,
+      color: 'blue'
+    },
+    bundle: {
+      workflowId: 'yJSsttzrtd4exJby',
+      name: 'Bundle Flow',
+      icon: FaBox,
+      color: 'orange'
+    }
+  };
 
   // Handle click outside export menu to close it
   useEffect(() => {
@@ -59,7 +78,7 @@ export default function ShowLogs() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(filteredLogs, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `logs_${Date.now()}.json`);
+    downloadAnchorNode.setAttribute("download", `${selectedFlow}_logs_${Date.now()}.json`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -80,7 +99,7 @@ export default function ShowLogs() {
     const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `logs_${Date.now()}.csv`);
+    downloadAnchorNode.setAttribute("download", `${selectedFlow}_logs_${Date.now()}.csv`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -88,75 +107,76 @@ export default function ShowLogs() {
   };
 
   // Fetch data from n8n API
-  useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch('https://evenbetterbuy.app.n8n.cloud/webhook/97b7faee-b0bc-40df-b3f0-0db7426a059a?workflowId=g6A1VMI4Mofkc3Mu', {
-          headers: {
-            'X-N8N-API-KEY': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4ZjgxY2M2NC05OTRmLTQ5NTUtYjY3Ny1hOGYwYWRhM2E3ODciLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzUzNTEwMjAyfQ.V0iFO9AdtL1fqqzxloXmRfsAewHAdIi1hdJrrwTBBo4'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+  const fetchLogs = async (flowType: FlowType = selectedFlow) => {
+    try {
+      setIsLoading(true);
+      const config = flowConfig[flowType];
+      const response = await fetch(`https://evenbetterbuy.app.n8n.cloud/webhook/97b7faee-b0bc-40df-b3f0-0db7426a059a?workflowId=${config.workflowId}`, {
+        headers: {
+          'X-N8N-API-KEY': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4ZjgxY2M2NC05OTRmLTQ5NTUtYjY3Ny1hOGYwYWRhM2E3ODciLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzUzNTEwMjAyfQ.V0iFO9AdtL1fqqzxloXmRfsAewHAdIi1hdJrrwTBBo4'
         }
+      });
 
-        const data = await response.json();
-        
-        // Transform n8n execution data to LogEntry format
-        const transformedLogs: LogEntry[] = data[0]?.data?.map((execution: any, index: number) => {
-          // Determine status based on finished flag and stoppedAt
-          let status = 'unknown';
-          let level: 'info' | 'warning' | 'error' | 'success' = 'info';
-          
-          if (execution.finished === false && execution.stoppedAt) {
-            status = 'completed';
-            level = 'success';
-          } else if (execution.finished === false && !execution.stoppedAt) {
-            status = 'running';
-            level = 'warning';
-          } else {
-            status = 'stopped';
-            level = 'error';
-          }
-          
-          return {
-            id: execution.id || `execution-${index}`,
-            timestamp: execution.startedAt ? new Date(execution.startedAt).toLocaleString() : 'Unknown',
-            level: level,
-            message: `Workflow execution ${status}`,
-            campaign: `Campaign ${execution.mode || 'Execution'}`,
-            action: `Mode: ${execution.mode || 'Unknown'}`,
-            details: execution.stoppedAt ? `Stopped at ${new Date(execution.stoppedAt).toLocaleString()}` : 'In progress'
-          };
-        }) || [];
-
-        setLogs(transformedLogs);
-        setFilteredLogs(transformedLogs);
-      } catch (error) {
-        console.error('Error fetching logs:', error);
-        // Fallback to mock data if API fails
-        const fallbackLogs: LogEntry[] = [
-          {
-            id: '1',
-            timestamp: new Date().toLocaleString(),
-            level: 'error',
-            message: 'Failed to fetch logs from API',
-            campaign: 'System Error',
-            action: 'API Connection',
-            details: 'Please check your connection and try again'
-          }
-        ];
-        setLogs(fallbackLogs);
-        setFilteredLogs(fallbackLogs);
-      } finally {
-        setIsLoading(false);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
 
+      const data = await response.json();
+      
+      // Transform n8n execution data to LogEntry format
+      const transformedLogs: LogEntry[] = data[0]?.data?.map((execution: any, index: number) => {
+        // Determine status based on finished flag and stoppedAt
+        let status = 'unknown';
+        let level: 'info' | 'warning' | 'error' | 'success' = 'info';
+        
+        if (execution.finished === false && execution.stoppedAt) {
+          status = 'completed';
+          level = 'success';
+        } else if (execution.finished === false && !execution.stoppedAt) {
+          status = 'running';
+          level = 'warning';
+        } else {
+          status = 'stopped';
+          level = 'error';
+        }
+        
+        return {
+          id: execution.id || `execution-${index}`,
+          timestamp: execution.startedAt ? new Date(execution.startedAt).toLocaleString() : 'Unknown',
+          level: level,
+          message: `${config.name} execution ${status}`,
+          campaign: `${config.name} ${execution.mode || 'Execution'}`,
+          action: `Mode: ${execution.mode || 'Unknown'}`,
+          details: execution.stoppedAt ? `Stopped at ${new Date(execution.stoppedAt).toLocaleString()}` : 'In progress'
+        };
+      }) || [];
+
+      setLogs(transformedLogs);
+      setFilteredLogs(transformedLogs);
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+      // Fallback to mock data if API fails
+      const fallbackLogs: LogEntry[] = [
+        {
+          id: '1',
+          timestamp: new Date().toLocaleString(),
+          level: 'error',
+          message: `Failed to fetch ${flowConfig[flowType].name} logs from API`,
+          campaign: 'System Error',
+          action: 'API Connection',
+          details: 'Please check your connection and try again'
+        }
+      ];
+      setLogs(fallbackLogs);
+      setFilteredLogs(fallbackLogs);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [selectedFlow]);
 
   useEffect(() => {
     let filtered = logs;
@@ -234,61 +254,7 @@ export default function ShowLogs() {
         </div>
         <div className="flex gap-2">
           <button 
-            onClick={() => {
-              setIsLoading(true);
-              // Re-fetch logs
-              const fetchLogs = async () => {
-                try {
-                  const response = await fetch('https://evenbetterbuy.app.n8n.cloud/webhook/97b7faee-b0bc-40df-b3f0-0db7426a059a?workflowId=g6A1VMI4Mofkc3Mu', {
-                    headers: {
-                      'X-N8N-API-KEY': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4ZjgxY2M2NC05OTRmLTQ5NTUtYjY3Ny1hOGYwYWRhM2E3ODciLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzUzNTEwMjAyfQ.V0iFO9AdtL1fqqzxloXmRfsAewHAdIi1hdJrrwTBBo4'
-                    }
-                  });
-
-                  if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                  }
-
-                  const data = await response.json();
-                  console.log(data);
-                  
-                  const transformedLogs: LogEntry[] = data[0]?.data?.map((execution: any, index: number) => {
-                    // Determine status based on finished flag and stoppedAt
-                    let status = 'unknown';
-                    let level: 'info' | 'warning' | 'error' | 'success' = 'info';
-                    
-                    if (execution.finished === false && execution.stoppedAt) {
-                      status = 'completed';
-                      level = 'success';
-                    } else if (execution.finished === false && !execution.stoppedAt) {
-                      status = 'running';
-                      level = 'warning';
-                    } else {
-                      status = 'stopped';
-                      level = 'error';
-                    }
-                    
-                    return {
-                      id: execution.id || `execution-${index}`,
-                      timestamp: execution.startedAt ? new Date(execution.startedAt).toLocaleString() : 'Unknown',
-                      level: level,
-                      message: `Workflow execution ${status}`,
-                      campaign: `Campaign ${execution.mode || 'Execution'}`,
-                      action: `Mode: ${execution.mode || 'Unknown'}`,
-                      details: execution.stoppedAt ? `Stopped at ${new Date(execution.stoppedAt).toLocaleString()}` : 'In progress'
-                    };
-                  }) || [];
-
-                  setLogs(transformedLogs);
-                  setFilteredLogs(transformedLogs);
-                } catch (error) {
-                  console.error('Error refreshing logs:', error);
-                } finally {
-                  setIsLoading(false);
-                }
-              };
-              fetchLogs();
-            }}
+            onClick={() => fetchLogs()}
             className="bg-muted hover:bg-muted/80 text-foreground font-semibold px-4 py-2 rounded-lg text-sm shadow transition-colors flex items-center gap-2"
             disabled={isLoading}
           >
@@ -321,6 +287,33 @@ export default function ShowLogs() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Flow Selector */}
+      <div className="bg-card rounded-xl shadow-md border border-border p-6 mb-6">
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium text-muted-foreground">Select Flow:</span>
+          <div className="flex gap-2">
+            {Object.entries(flowConfig).map(([key, config]) => {
+              const IconComponent = config.icon;
+              const isSelected = selectedFlow === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSelectedFlow(key as FlowType)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isSelected
+                      ? `bg-${config.color}-100 text-${config.color}-800 dark:bg-${config.color}-900/30 dark:text-${config.color}-400 border-${config.color}-200 dark:border-${config.color}-800`
+                      : 'bg-muted hover:bg-muted/80 text-foreground border border-border'
+                  }`}
+                >
+                  <IconComponent className="text-sm" />
+                  {config.name}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -426,7 +419,8 @@ export default function ShowLogs() {
                             setDialogError(null);
                             setDialogContent(null);
                             
-                            const response = await fetch(`https://evenbetterbuy.app.n8n.cloud/webhook/c275f012-39f5-40b5-85f4-67e48ff532e435?id=${log.id}`, {
+                            const config = flowConfig[selectedFlow];
+                            const response = await fetch(`https://evenbetterbuy.app.n8n.cloud/webhook/c275f012-39f5-40b5-85f4-67e48ff532e435?id=${log.id}&workflowId=${config.workflowId}`, {
                               method: 'GET',
                               headers: {
                                 'X-N8N-API-KEY': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4ZjgxY2M2NC05OTRmLTQ5NTUtYjY3Ny1hOGYwYWRhM2E3ODciLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzUzNTEwMjAyfQ.V0iFO9AdtL1fqqzxloXmRfsAewHAdIi1hdJrrwTBBo4'
@@ -472,6 +466,10 @@ export default function ShowLogs() {
       {/* Summary */}
       <div className="mt-6 bg-muted/30 rounded-xl p-4 border border-border">
         <div className="flex flex-wrap gap-6 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">Current Flow:</span>
+            <span className="font-medium">{flowConfig[selectedFlow].name}</span>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">Total Logs:</span>
             <span className="font-medium">{filteredLogs.length}</span>
