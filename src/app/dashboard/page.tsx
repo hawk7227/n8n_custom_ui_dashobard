@@ -259,7 +259,6 @@ export default function Dashboard() {
                 disabled={refreshing}
                 className="flex items-center space-x-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors duration-200 disabled:opacity-50"
               >
-                <FaSpinner className={`${refreshing ? 'animate-spin' : ''}`} size={16} />
                 <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
               </button>
             </div>
