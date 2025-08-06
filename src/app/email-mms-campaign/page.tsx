@@ -638,7 +638,7 @@ const CampaignSavedDialog: React.FC<CampaignSavedDialogProps> = ({
         <div className="space-y-4">
           <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
             <p className="text-sm text-green-800 dark:text-green-200">
-              ✅ Campaign <strong>"{campaignName}"</strong> has been {isEditing ? 'updated' : 'saved'} successfully!
+              ✅ Campaign <strong>&ldquo;{campaignName}&rdquo;</strong> has been {isEditing ? 'updated' : 'saved'} successfully!
             </p>
           </div>
 
@@ -1623,7 +1623,7 @@ export default function EmailMMSCampaignPage() {
             </div>
             <h2 className="text-xl font-semibold mb-2">Campaign Not Found</h2>
             <p className="text-muted-foreground mb-6">
-              The campaign you're looking for doesn't exist or has been deleted.
+              The campaign you&apos;re looking for doesn&apos;t exist or has been deleted.
             </p>
             <div className="flex gap-3 justify-center">
               <Button onClick={handleBack} variant="outline">
@@ -1945,7 +1945,7 @@ export default function EmailMMSCampaignPage() {
                         </p>
                         {!formData.subject && (
                           <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                            ✨ Click "Generate" to create AI-powered subject lines
+                            ✨ Click &ldquo;Generate&rdquo; to create AI-powered subject lines
                           </p>
                         )}
                       </div>
@@ -1999,7 +1999,7 @@ export default function EmailMMSCampaignPage() {
                         </p>
                         {!formData.emailBody && (
                           <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                            ✨ Click "Generate" to create AI-powered email content
+                            ✨ Click &ldquo;Generate&rdquo; to create AI-powered email content
                           </p>
                         )}
                         {formData.sendEmailAsImage && (
@@ -2049,13 +2049,13 @@ export default function EmailMMSCampaignPage() {
                       {!formData.smsContent && (
                         <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                           <p className="text-xs text-blue-600 dark:text-blue-400">
-                            ✨ Click "Generate" to create AI-powered MMS content
+                            ✨ Click &ldquo;Generate&rdquo; to create AI-powered MMS content
                           </p>
                         </div>
                       )}
                       <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                         <p className="text-xs text-blue-700 dark:text-blue-300">
-                          💡 MMS includes lead's actual profile image from "Sent Image URL via Email" and contact information
+                          💡 MMS includes lead&apos;s actual profile image from &ldquo;Sent Image URL via Email&rdquo; and contact information
                         </p>
                       </div>
                       
@@ -2124,7 +2124,7 @@ export default function EmailMMSCampaignPage() {
 
                         <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                           <p className="text-xs text-blue-700 dark:text-blue-300">
-                            💡 Select an image from your brand library or enter a custom URL. Leave empty to use brand's product images.
+                            💡 Select an image from your brand library or enter a custom URL. Leave empty to use brand&apos;s product images.
                           </p>
                         </div>
                       </div>
