@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FaPaperPlane, FaUser, FaRobot, FaSpinner, FaEye, FaRedo, FaArrowLeft, FaExternalLinkAlt, FaEyeSlash } from 'react-icons/fa';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../lib/supabase';
@@ -61,10 +61,10 @@ export default function LandingPageBuilderPage() {
       }
       setSessionKey(key as string);
     }
-  }, [searchParams]);
+  }, [searchParams, loadExistingSession]);
 
   // Function to load existing session from Supabase
-  const loadExistingSession = async (sessionId: string) => {
+  const loadExistingSession = useCallback(async (sessionId: string) => {
     try {
       // Check if session exists in Supabase
       const { data, error } = await supabase
@@ -119,7 +119,7 @@ export default function LandingPageBuilderPage() {
     } finally {
       setIsLoadingSession(false);
     }
-  };
+  }, [brandName]);
 
 
 

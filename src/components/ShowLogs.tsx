@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FaSearch, FaFilter, FaDownload, FaEye, FaClock, FaCheckCircle, FaExclamationTriangle, FaInfoCircle, FaChevronDown, FaTimes, FaUsers, FaBox } from 'react-icons/fa';
 import {
   Table,
@@ -107,7 +107,7 @@ export default function ShowLogs() {
   };
 
   // Fetch data from n8n API
-  const fetchLogs = async (flowType: FlowType = selectedFlow) => {
+  const fetchLogs = useCallback(async (flowType: FlowType = selectedFlow) => {
     try {
       setIsLoading(true);
       const config = flowConfig[flowType];
@@ -172,11 +172,11 @@ export default function ShowLogs() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedFlow]);
 
   useEffect(() => {
     fetchLogs();
-  }, [selectedFlow]);
+  }, [selectedFlow, fetchLogs]);
 
   useEffect(() => {
     let filtered = logs;
