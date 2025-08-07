@@ -210,7 +210,7 @@ export default function LandingPagesTab() {
                     <FaEye size={16} />
                   </button>
                   <button
-                    onClick={() => window.open(`http://localhost:3000/landing-page-builder?session=${page.session_id}`, '_blank')}
+                    onClick={() => window.open(`https://n8n-custom-ui-dashobard.vercel.app/landing-page-builder?session=${page.session_id}`, '_blank')}
                     className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors duration-200"
                     title="Edit Landing Page"
                   >
