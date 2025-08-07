@@ -1449,6 +1449,7 @@ export default function EmailMMSCampaignPage() {
         mms_text_content: formData.smsContent,
         mms_image_url: formData.imageUrl,
         selected_campaign_filter: selectedCampaignId === 'all' ? 'All Campaigns' : campaigns.find(c => c.id === selectedCampaignId)?.name || 'Unknown',
+        lead_campaign_id: selectedCampaignId === 'all' ? null : selectedCampaignId,
         total_recipients: filteredLeads.length,
         created_by: 'User', // You can update this with actual user info
         tags: [selectedBrand?.brand_name, formData.campaignType, selectedLandingPage?.name].filter(Boolean),

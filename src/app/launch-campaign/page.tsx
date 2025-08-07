@@ -91,6 +91,7 @@ export default function LaunchCampaignPage() {
   const handleLaunchCampaign = async (campaignId: string) => {
     try {
       setIsLaunching(campaignId);
+      console.log('Launching campaign:', campaignId);
       
       // Find the campaign
       const campaign = campaigns.find(c => c.id === campaignId);
@@ -112,23 +113,13 @@ export default function LaunchCampaignPage() {
       }
 
       // Send campaign via webhook
-      const response = await fetch('https://evenbetterbuy.app.n8n.cloud/webhook/launch-campaign', {
+      const response = await fetch('https://evenbetterbuy.app.n8n.cloud/webhook/d023a07c-1eee-4c6a-8fe7-5ad62d81003a', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          campaign_id: campaignId,
-          campaign_name: campaign.campaign_name,
-          campaign_type: campaign.campaign_type,
-          brand_name: campaign.brand_name,
-          email_subject: campaign.email_subject,
-          email_body: campaign.email_body,
-          send_email_as_image: campaign.send_email_as_image,
-          mms_text_content: campaign.mms_text_content,
-          mms_image_url: campaign.mms_image_url,
-          total_recipients: campaign.total_recipients,
-          selected_campaign_filter: campaign.selected_campaign_filter
+          campaign_id: campaignId
         }),
       });
 
