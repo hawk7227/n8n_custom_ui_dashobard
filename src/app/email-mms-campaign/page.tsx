@@ -2453,7 +2453,7 @@ export default function EmailMMSCampaignPage() {
                                 Please select a brand image for email body
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                                Click "Select Image" above to choose a brand image
+                                Click &quot;Select Image&quot; above to choose a brand image
                               </p>
                             </div>
                           )
