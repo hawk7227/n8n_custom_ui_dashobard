@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { FaSearch, FaTimes, FaCheck, FaSpinner, FaImage } from 'react-icons/fa';
+import { FaSearch, FaTimes, FaCheck, FaSpinner, FaImage, FaPlus } from 'react-icons/fa';
 import { supabase, Image } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import UploadImageDialog from './UploadImageDialog';
 
 interface ImageSelectorProps {
   open: boolean;
@@ -28,6 +29,7 @@ export default function ImageSelector({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedImages, setSelectedImages] = useState<string[]>(currentSelectedImages);
   const [filteredImages, setFilteredImages] = useState<Image[]>([]);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
   // Fetch images from Supabase
   const fetchImages = async () => {
@@ -106,6 +108,11 @@ export default function ImageSelector({
     onOpenChange(false);
   };
 
+  // Handle successful image upload
+  const handleImageUploaded = () => {
+    fetchImages(); // Refresh the images list
+  };
+
   // Format file size
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -117,8 +124,8 @@ export default function ImageSelector({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center space-x-2">
             <FaImage className="text-primary" size={20} />
             <span>{singleSelection ? 'Select Image' : 'Select Images'}</span>
@@ -130,28 +137,38 @@ export default function ImageSelector({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col h-full space-y-4">
-          {/* Search Bar */}
-          <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
-            <Input
-              placeholder="Search images by name, brand, or URL..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <FaTimes size={16} />
-              </button>
-            )}
+        <div className="flex flex-col flex-1 min-h-0 space-y-4">
+          {/* Search Bar and Add Image Button */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="relative flex-1">
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+              <Input
+                placeholder="Search images by name, brand, or URL..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <FaTimes size={16} />
+                </button>
+              )}
+            </div>
+            <Button
+              onClick={() => setUploadDialogOpen(true)}
+              size="sm"
+              className="flex-shrink-0"
+            >
+              <FaPlus className="mr-2" size={14} />
+              Add Image
+            </Button>
           </div>
 
           {/* Images Grid */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {loading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="flex items-center space-x-3">
@@ -239,7 +256,7 @@ export default function ImageSelector({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-4 border-t border-border">
+          <div className="flex items-center justify-between pt-4 border-t border-border flex-shrink-0">
             <div className="text-sm text-muted-foreground">
               {selectedImages.length} image{selectedImages.length !== 1 ? 's' : ''} selected
             </div>
@@ -260,6 +277,13 @@ export default function ImageSelector({
           </div>
         </div>
       </DialogContent>
+
+      {/* Upload Image Dialog */}
+      <UploadImageDialog
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        onSuccess={handleImageUploaded}
+      />
     </Dialog>
   );
 } 

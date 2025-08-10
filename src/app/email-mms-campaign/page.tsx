@@ -50,6 +50,8 @@ interface CampaignForm {
   recipientPhone: string;
   campaignType: 'email' | 'sms' | 'both';
   imageUrl: string;
+  emailImageUrl: string; // New field for email body image
+  emailLandingPageUrl: string; // New field for email body landing page URL
   sendEmailAsImage: boolean;
 }
 
@@ -934,6 +936,8 @@ export default function EmailMMSCampaignPage() {
     recipientPhone: '',
     campaignType: 'both',
     imageUrl: '',
+    emailImageUrl: '', // New field for email body image
+    emailLandingPageUrl: '', // New field for email body landing page URL
     sendEmailAsImage: true, // Default to true for email body
   });
   
@@ -957,6 +961,7 @@ export default function EmailMMSCampaignPage() {
 
   // Image selector dialog state
   const [isImageSelectorOpen, setIsImageSelectorOpen] = useState(false);
+  const [isEmailImageSelectorOpen, setIsEmailImageSelectorOpen] = useState(false);
 
   // Save campaign state
   const [isSavingCampaign, setIsSavingCampaign] = useState(false);
@@ -1096,6 +1101,8 @@ export default function EmailMMSCampaignPage() {
         recipientPhone: '',
         campaignType: data.campaign_type || 'both',
         imageUrl: data.mms_image_url || '',
+        emailImageUrl: data.email_image_url || '',
+        emailLandingPageUrl: data.email_landing_page_url || '',
         sendEmailAsImage: data.send_email_as_image || false,
       });
 
@@ -1231,6 +1238,8 @@ export default function EmailMMSCampaignPage() {
       emailBody: prev.emailBody || '',
       smsContent: prev.smsContent || '',
       imageUrl: prev.imageUrl || '',
+      emailImageUrl: prev.emailImageUrl || '',
+      emailLandingPageUrl: prev.emailLandingPageUrl || '',
       sendEmailAsImage: prev.sendEmailAsImage,
     }));
   };
@@ -1258,9 +1267,23 @@ export default function EmailMMSCampaignPage() {
 
   const handleTestCampaign = () => {
     if (formData.campaignType === 'email' || formData.campaignType === 'both') {
-      if (!formData.subject || !formData.emailBody) {
-        alert('Please fill in both email subject and email body before testing');
-        return;
+      // Check if sending email as image
+      if (formData.sendEmailAsImage) {
+        // When sending as image, only require subject and email image
+        if (!formData.subject) {
+          alert('Please fill in email subject before testing');
+          return;
+        }
+        if (!formData.emailImageUrl) {
+          alert('Please select a brand image for the email body before testing');
+          return;
+        }
+      } else {
+        // When sending as regular email, require subject and email body
+        if (!formData.subject || !formData.emailBody) {
+          alert('Please fill in both email subject and email body before testing');
+          return;
+        }
       }
       setIsTestEmailDialogOpen(true);
     } else if (formData.campaignType === 'sms') {
@@ -1278,28 +1301,25 @@ export default function EmailMMSCampaignPage() {
       
       let emailBodyContent = selectedLead ? replacePlaceholders(formData.emailBody, selectedLead) : formData.emailBody;
       
-      // If sendEmailAsImage is enabled, convert HTML to image first
-      if (formData.sendEmailAsImage && emailBodyContent) {
-        try {
-          console.log('Converting email body to image...');
-          const imageUrl = await convertHtmlToImage(emailBodyContent);
-          console.log('Email converted to image:', imageUrl);
-          
-          // Check if we have a landing page URL from the selected landing page
-          const landingPageUrl = selectedLandingPage ? `https://landing-page-bulder.vercel.app/landing/${selectedLandingPage.session_id}` : null;
-          
-          // Replace the email body with the image, optionally wrapped in a link
-          if (landingPageUrl) {
-            emailBodyContent = `<a href="${landingPageUrl}" target="_blank" style="display: block; text-decoration: none;">
-              <img src="${imageUrl}" alt="Email Content - Click to view landing page" style="max-width: 100%; height: auto; cursor: pointer;" />
-            </a>`;
-          } else {
-            emailBodyContent = `<img src="${imageUrl}" alt="Email Content" style="max-width: 100%; height: auto;" />`;
-          }
-        } catch (imageError) {
-          console.error('Failed to convert email to image:', imageError);
-          alert('Warning: Failed to convert email to image. Sending as regular HTML instead.');
+      // If sendEmailAsImage is enabled, use the selected brand image
+      if (formData.sendEmailAsImage && formData.emailImageUrl) {
+        console.log('Using selected brand image for email body:', formData.emailImageUrl);
+        
+        // Use the selected landing page URL for email body image
+        const landingPageUrl = formData.emailLandingPageUrl || (selectedLandingPage ? `https://landing-page-bulder.vercel.app/landing/${selectedLandingPage.session_id}` : null);
+        
+        // Replace the email body with the selected image, optionally wrapped in a link
+        if (landingPageUrl) {
+          emailBodyContent = `<a href="${landingPageUrl}" target="_blank" style="display: block; text-decoration: none;">
+            <img src="${formData.emailImageUrl}" alt="Email Content - Click to view landing page" style="max-width: 100%; height: auto; cursor: pointer;" />
+          </a>`;
+        } else {
+          emailBodyContent = `<img src="${formData.emailImageUrl}" alt="Email Content" style="max-width: 100%; height: auto;" />`;
         }
+      } else if (formData.sendEmailAsImage && !formData.emailImageUrl) {
+        // If sendEmailAsImage is enabled but no image is selected, show warning
+        alert('Please select a brand image for the email body when "Send Email as Image" is enabled.');
+        return;
       }
       
       const response = await fetch('https://evenbetterbuy.app.n8n.cloud/webhook/f1bc25fc-3a15-41c2-8f74-06f1b66a94a5', {
@@ -1446,6 +1466,8 @@ export default function EmailMMSCampaignPage() {
         email_subject: formData.subject,
         email_body: formData.emailBody,
         send_email_as_image: formData.sendEmailAsImage,
+        email_image_url: formData.emailImageUrl,
+        email_landing_page_url: formData.emailLandingPageUrl,
         mms_text_content: formData.smsContent,
         mms_image_url: formData.imageUrl,
         selected_campaign_filter: selectedCampaignId === 'all' ? 'All Campaigns' : campaigns.find(c => c.id === selectedCampaignId)?.name || 'Unknown',
@@ -1526,6 +1548,18 @@ export default function EmailMMSCampaignPage() {
     setIsImageSelectorOpen(false);
   };
 
+  // Handle email image selection from ImageSelector
+  const handleEmailImageSelection = (selectedImages: string[]) => {
+    if (selectedImages.length > 0) {
+      // For email body, we only allow one image
+      setFormData(prev => ({
+        ...prev,
+        emailImageUrl: selectedImages[0]
+      }));
+    }
+    setIsEmailImageSelectorOpen(false);
+  };
+
   const handleContinueEditing = () => {
     // Close the success dialog
     setIsCampaignSavedDialogOpen(false);
@@ -1536,76 +1570,7 @@ export default function EmailMMSCampaignPage() {
     }
   };
 
-  // Convert HTML to image using HTML to Image API
-  const convertHtmlToImage = async (htmlContent: string): Promise<string> => {
-    try {
-      // Create a styled HTML template for the email content
-      const styledHtml = `
-        <div style="
-          font-family: Arial, sans-serif;
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 20px;
-          background-color: #ffffff;
-          color: #333333;
-          line-height: 1.6;
-          font-size: 14px;
-        ">
-          ${htmlContent}
-        </div>
-      `;
 
-      const response = await fetch('https://hcti.io/v1/image', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Basic ' + btoa('9b38ebb6-9e02-4f74-81fc-57eb38644994:184cc4ee-9993-4a54-94e5-1cd1d448e7dd'),
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          html: styledHtml,
-          css: `
-            body { 
-              margin: 0; 
-              padding: 0; 
-              background-color: #ffffff; 
-              font-family: Arial, sans-serif; 
-            }
-            img { 
-              max-width: 100%; 
-              height: auto; 
-            }
-            a { 
-              color: #0066cc; 
-              text-decoration: none; 
-            }
-            h1, h2, h3, h4, h5, h6 { 
-              margin-top: 0; 
-              color: #333333; 
-            }
-            p { 
-              margin-bottom: 1em; 
-            }
-          `
-        }).toString()
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTML to Image API error: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('HTML to Image API response:', result);
-      
-      if (result.url) {
-        return result.url;
-      } else {
-        throw new Error('No image URL returned from API');
-      }
-    } catch (error) {
-      console.error('Error converting HTML to image:', error);
-      throw error;
-    }
-  };
 
   // Handle content generation
   const handleGenerateContent = async (contentType: string, userInput: string, includeImage: boolean, includePurchaseLink: boolean, selectedLandingPageForGeneration: LandingPage | null) => {
@@ -2104,6 +2069,142 @@ export default function EmailMMSCampaignPage() {
                           📸 Send Email as Image (Recommended)
                         </Label>
                       </div>
+
+                      {/* Email Image Selection - Only show when sendEmailAsImage is checked */}
+                      {formData.sendEmailAsImage && (
+                        <div className="space-y-3 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                              🖼️ Select Brand Image for Email Body
+                            </Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setIsEmailImageSelectorOpen(true)}
+                              className="text-xs bg-white dark:bg-gray-800"
+                            >
+                              <FaImage className="mr-1" size={12} />
+                              Select Image
+                            </Button>
+                          </div>
+                          
+                          {/* Custom URL Input */}
+                          <div className="space-y-2">
+                            <Label htmlFor="emailImageUrl" className="text-sm text-muted-foreground">
+                              Or enter custom image URL:
+                            </Label>
+                            <Input
+                              id="emailImageUrl"
+                              value={formData.emailImageUrl}
+                              onChange={(e) => handleFormChange('emailImageUrl', e.target.value)}
+                              placeholder="Enter custom image URL for email body..."
+                            />
+                          </div>
+
+                          {/* Selected Email Image Preview */}
+                          {formData.emailImageUrl && (
+                            <div className="space-y-2">
+                              <Label className="text-sm text-muted-foreground">Selected Email Image Preview:</Label>
+                              <div className="relative">
+                                <img
+                                  src={formData.emailImageUrl}
+                                  alt="Selected email image"
+                                  className="w-full h-32 object-cover rounded-lg border border-border"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.nextElementSibling?.classList.remove('hidden');
+                                  }}
+                                />
+                                <div className="hidden absolute inset-0 bg-muted/50 rounded-lg flex items-center justify-center">
+                                  <div className="text-center">
+                                    <div className="text-muted-foreground text-2xl mb-1">📷</div>
+                                    <span className="text-xs text-muted-foreground">Image not available</span>
+                                  </div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleFormChange('emailImageUrl', '')}
+                                  className="absolute top-2 right-2 w-6 h-6 p-0 bg-background/80 hover:bg-background"
+                                >
+                                  ×
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                            <p className="text-xs text-blue-700 dark:text-blue-300">
+                              💡 Select a brand image that will be embedded in the email body. This image will be clickable and link to your landing page.
+                            </p>
+                          </div>
+
+                          {/* Landing Page Selection for Email Body */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                              🌐 Select Landing Page for Email Body
+                            </Label>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full justify-between text-xs"
+                                >
+                                  {formData.emailLandingPageUrl ? (
+                                    landingPages.find(lp => `https://landing-page-bulder.vercel.app/landing/${lp.session_id}` === formData.emailLandingPageUrl)?.name || 
+                                    `Landing Page #${String(landingPages.find(lp => `https://landing-page-bulder.vercel.app/landing/${lp.session_id}` === formData.emailLandingPageUrl)?.id).slice(-8)}`
+                                  ) : (
+                                    'Select a landing page (optional)'
+                                  )}
+                                  <FaChevronDown className="text-xs" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="w-64 max-h-[200px] overflow-y-auto">
+                                <DropdownMenuItem
+                                  onClick={() => handleFormChange('emailLandingPageUrl', '')}
+                                  className="cursor-pointer"
+                                >
+                                  <div className="flex flex-col items-start">
+                                    <span className="text-sm">No landing page</span>
+                                    <span className="text-xs text-muted-foreground">Image will not be clickable</span>
+                                  </div>
+                                </DropdownMenuItem>
+                                {landingPages.map((landingPage) => (
+                                  <DropdownMenuItem
+                                    key={landingPage.id}
+                                    onClick={() => handleFormChange('emailLandingPageUrl', `https://landing-page-bulder.vercel.app/landing/${landingPage.session_id}`)}
+                                    className="cursor-pointer"
+                                  >
+                                    <div className="flex flex-col items-start">
+                                      <span className="text-sm">{landingPage.name || `Landing Page #${String(landingPage.id).slice(-8)}`}</span>
+                                      {landingPage.brand && (
+                                        <span className="text-xs text-muted-foreground">Brand: {landingPage.brand}</span>
+                                      )}
+                                    </div>
+                                  </DropdownMenuItem>
+                                ))}
+                                {landingPages.length === 0 && (
+                                  <DropdownMenuItem disabled>
+                                    No landing pages found
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            {formData.emailLandingPageUrl && (
+                              <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
+                                <p className="text-xs text-green-700 dark:text-green-300">
+                                  ✅ Email image will link to: {formData.emailLandingPageUrl}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                         <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
                           💡 Available placeholders: [[name]], [[email]], [[phone]], [[company]], [[status]]
@@ -2115,13 +2216,12 @@ export default function EmailMMSCampaignPage() {
                         )}
                         {formData.sendEmailAsImage && (
                           <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                            🖼️ Email content will be converted to an image for better compatibility
-                            {selectedBrand?.product_link && (
+                            🖼️ Email will contain the selected brand image as the main content
+                            {formData.emailLandingPageUrl && (
                               <span className="block mt-1 text-green-600 dark:text-green-400">
-                                🔗 Image will be clickable and link to purchase page
+                                🔗 Image will be clickable and link to landing page
                               </span>
                             )}
-
                           </p>
                         )}
                       </div>
@@ -2313,22 +2413,50 @@ export default function EmailMMSCampaignPage() {
                       {/* Email Body */}
                       <div className="px-4 py-4 bg-white dark:bg-gray-900">
                         {formData.sendEmailAsImage ? (
-                          <div className="text-center py-8">
-                            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                              <span className="text-2xl">📸</span>
-                            </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Email content will be converted to an image
-                            </p>
-                            {selectedLandingPage && (
-                              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                                🌐 Image will be clickable and link to landing page
+                          formData.emailImageUrl ? (
+                            <div className="text-center">
+                              <div className="relative">
+                                <img
+                                  src={formData.emailImageUrl}
+                                  alt="Email content"
+                                  className="w-full max-w-md mx-auto rounded-lg shadow-sm border border-gray-200"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.nextElementSibling?.classList.remove('hidden');
+                                  }}
+                                />
+                                <div className="hidden text-center py-8">
+                                  <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <span className="text-2xl">📸</span>
+                                  </div>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    Selected brand image
+                                  </p>
+                                </div>
+                              </div>
+                              {formData.emailLandingPageUrl && (
+                                <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                                  🌐 Image will be clickable and link to landing page
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                Brand image selected for email body
                               </p>
-                            )}
-                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                              Content: {formData.emailBody.length} characters
-                            </p>
-                          </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-8">
+                              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-2xl">📸</span>
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Please select a brand image for email body
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                Click "Select Image" above to choose a brand image
+                              </p>
+                            </div>
+                          )
                         ) : (
                           <div className="prose prose-sm max-w-none">
                             <div 
@@ -2520,6 +2648,15 @@ export default function EmailMMSCampaignPage() {
         onOpenChange={setIsImageSelectorOpen}
         onImagesSelected={handleImageSelection}
         currentSelectedImages={formData.imageUrl ? [formData.imageUrl] : []}
+        singleSelection={true}
+      />
+
+      {/* Email Image Selector Dialog */}
+      <ImageSelector
+        open={isEmailImageSelectorOpen}
+        onOpenChange={setIsEmailImageSelectorOpen}
+        onImagesSelected={handleEmailImageSelection}
+        currentSelectedImages={formData.emailImageUrl ? [formData.emailImageUrl] : []}
         singleSelection={true}
       />
 
