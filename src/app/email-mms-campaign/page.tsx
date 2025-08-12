@@ -14,6 +14,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase, Brand, LandingPage } from '@/lib/supabase';
 import ImageSelector from '@/components/ImageSelector';
 
+// Helper function to validate and format URLs
+const formatCustomUrl = (url: string) => {
+  if (!url) return '';
+  
+  // Add https:// if no protocol is specified
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return `https://${url}`;
+  }
+  
+  return url;
+};
+
 interface LeadData {
   Name: string;
   Email: string;
@@ -65,6 +77,7 @@ interface GenerateDialogProps {
   landingPages: LandingPage[];
   isLoading: boolean;
   contentType: string;
+  formatCustomUrl: (url: string) => string;
 }
 
 interface TestEmailDialogProps {
@@ -116,7 +129,8 @@ const GenerateDialog: React.FC<GenerateDialogProps> = ({
   setSelectedLandingPage,
   landingPages,
   isLoading,
-  contentType
+  contentType,
+  formatCustomUrl
 }) => {
   const [userInput, setUserInput] = useState('');
   const [showPrompts, setShowPrompts] = useState(true);
@@ -371,6 +385,29 @@ const GenerateDialog: React.FC<GenerateDialogProps> = ({
                               </div>
                             </DropdownMenuItem>
                           ))}
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const customUrl = prompt('Enter custom landing page URL:', 'https://');
+                              if (customUrl && customUrl.trim()) {
+                                const formattedUrl = formatCustomUrl(customUrl.trim());
+                                const customLandingPage = {
+                                  id: 'custom',
+                                  name: 'Custom URL',
+                                  session_id: formattedUrl,
+                                  brand: selectedBrand?.brand_name || 'Custom',
+                                  created_at: new Date().toISOString()
+                                } as LandingPage;
+                                setSelectedLandingPageForGeneration(customLandingPage);
+                                setSelectedLandingPage(customLandingPage);
+                              }
+                            }}
+                            className="cursor-pointer border-t border-border"
+                          >
+                            <div className="flex flex-col items-start">
+                              <span className="text-sm font-medium">🌐 Custom URL</span>
+                              <span className="text-xs text-muted-foreground">Enter your own landing page URL</span>
+                            </div>
+                          </DropdownMenuItem>
                           {landingPages.length === 0 && (
                             <DropdownMenuItem disabled>
                               No landing pages found
@@ -975,6 +1012,20 @@ export default function EmailMMSCampaignPage() {
   const [isCampaignSaved, setIsCampaignSaved] = useState(false);
 
   const selectedLead = filteredLeads[selectedLeadIndex];
+
+  // Helper function to get landing page display name
+  const getLandingPageDisplayName = (url: string) => {
+    if (!url) return '';
+    
+    // Check if it's a custom URL (not from our system)
+    if (!url.includes('landing-page-bulder.vercel.app')) {
+      return 'Custom URL';
+    }
+    
+    // Find the landing page in our system
+    const landingPage = landingPages.find(lp => `https://landing-page-bulder.vercel.app/landing/${lp.session_id}` === url);
+    return landingPage?.name || `Landing Page #${String(landingPage?.id).slice(-8)}`;
+  };
 
   const handleBack = () => {
     router.push('/tools');
@@ -2155,8 +2206,7 @@ export default function EmailMMSCampaignPage() {
                                   className="w-full justify-between text-xs"
                                 >
                                   {formData.emailLandingPageUrl ? (
-                                    landingPages.find(lp => `https://landing-page-bulder.vercel.app/landing/${lp.session_id}` === formData.emailLandingPageUrl)?.name || 
-                                    `Landing Page #${String(landingPages.find(lp => `https://landing-page-bulder.vercel.app/landing/${lp.session_id}` === formData.emailLandingPageUrl)?.id).slice(-8)}`
+                                    getLandingPageDisplayName(formData.emailLandingPageUrl)
                                   ) : (
                                     'Select a landing page (optional)'
                                   )}
@@ -2187,6 +2237,20 @@ export default function EmailMMSCampaignPage() {
                                     </div>
                                   </DropdownMenuItem>
                                 ))}
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    const customUrl = prompt('Enter custom landing page URL:', 'https://');
+                                    if (customUrl && customUrl.trim()) {
+                                      handleFormChange('emailLandingPageUrl', formatCustomUrl(customUrl.trim()));
+                                    }
+                                  }}
+                                  className="cursor-pointer border-t border-border"
+                                >
+                                  <div className="flex flex-col items-start">
+                                    <span className="text-sm font-medium">🌐 Custom URL</span>
+                                    <span className="text-xs text-muted-foreground">Enter your own landing page URL</span>
+                                  </div>
+                                </DropdownMenuItem>
                                 {landingPages.length === 0 && (
                                   <DropdownMenuItem disabled>
                                     No landing pages found
@@ -2195,12 +2259,38 @@ export default function EmailMMSCampaignPage() {
                               </DropdownMenuContent>
                             </DropdownMenu>
                             {formData.emailLandingPageUrl && (
-                              <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
-                                <p className="text-xs text-green-700 dark:text-green-300">
-                                  ✅ Email image will link to: {formData.emailLandingPageUrl}
+                              <div className={`p-2 rounded border text-xs ${
+                                formData.emailLandingPageUrl.includes('landing-page-bulder.vercel.app') 
+                                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
+                                  : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'
+                              }`}>
+                                <p className="font-medium mb-1">
+                                  {formData.emailLandingPageUrl.includes('landing-page-bulder.vercel.app') ? '✅' : '🌐'} Email image will link to:
                                 </p>
+                                <p className="break-all">{formData.emailLandingPageUrl}</p>
+                                {!formData.emailLandingPageUrl.includes('landing-page-bulder.vercel.app') && (
+                                  <p className="mt-1 text-blue-600 dark:text-blue-400">
+                                    Custom landing page URL
+                                  </p>
+                                )}
                               </div>
                             )}
+                            
+                            {/* Custom URL Input Field */}
+                            <div className="space-y-2">
+                              <Label className="text-sm text-muted-foreground">
+                                Or enter custom landing page URL directly:
+                              </Label>
+                              <Input
+                                value={formData.emailLandingPageUrl}
+                                onChange={(e) => handleFormChange('emailLandingPageUrl', formatCustomUrl(e.target.value))}
+                                placeholder="https://your-landing-page.com or your-landing-page.com"
+                                className="text-xs"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                💡 You can also use the dropdown above to select from existing landing pages or add a custom one
+                              </p>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -2436,9 +2526,19 @@ export default function EmailMMSCampaignPage() {
                                 </div>
                               </div>
                               {formData.emailLandingPageUrl && (
-                                <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                                  🌐 Image will be clickable and link to landing page
-                                </p>
+                                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">
+                                    🌐 Image will be clickable and link to:
+                                  </p>
+                                  <p className="text-xs text-blue-700 dark:text-blue-300 break-all">
+                                    {formData.emailLandingPageUrl}
+                                  </p>
+                                  {!formData.emailLandingPageUrl.includes('landing-page-bulder.vercel.app') && (
+                                    <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                                      Custom landing page URL
+                                    </p>
+                                  )}
+                                </div>
                               )}
                               <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                                 Brand image selected for email body
@@ -2616,6 +2716,7 @@ export default function EmailMMSCampaignPage() {
         landingPages={landingPages}
         isLoading={isGenerating}
         contentType={currentContentType}
+        formatCustomUrl={formatCustomUrl}
       />
 
       {/* Test Email Dialog */}

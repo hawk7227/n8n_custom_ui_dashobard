@@ -17,9 +17,12 @@ Create a table named `landingpages` in your Supabase database with the following
 CREATE TABLE landingpages (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   session_id TEXT NOT NULL,
-  html_content TEXT,
-  css_content TEXT,
-  js_content TEXT,
+  name TEXT,
+  brand TEXT,
+  html_code TEXT,
+  images JSONB DEFAULT '[]',
+  purchase_link TEXT,
+  header_code TEXT DEFAULT '',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
@@ -29,6 +32,16 @@ CREATE TABLE landingpages (
 ```sql
 CREATE INDEX idx_landingpages_session_id ON landingpages(session_id);
 CREATE INDEX idx_landingpages_created_at ON landingpages(created_at DESC);
+CREATE INDEX idx_landingpages_header_code ON landingpages USING GIN (to_tsvector('english', header_code));
+```
+
+### Adding the header_code column (if table already exists)
+
+If you already have a `landingpages` table, run this SQL to add the new column:
+
+```sql
+-- Run the contents of add_header_code_column.sql
+ALTER TABLE landingpages ADD COLUMN IF NOT EXISTS header_code TEXT DEFAULT '';
 ```
 
 ## Getting Your Supabase Credentials
@@ -46,8 +59,17 @@ The landing pages route includes:
 - Delete functionality for each landing page
 - Refresh button to reload data
 - Create new button that opens the landing page builder
+- **Header Code Editor**: Edit HTML/CSS/JavaScript code that gets inserted in the `<head>` section
 - Responsive card layout
 - Loading states and error handling
+
+## Header Code Feature
+
+The new `header_code` column allows you to:
+- Add custom HTML, CSS, and JavaScript to your landing pages
+- Insert meta tags, analytics scripts, custom fonts, and external resources
+- The code is automatically applied to all pages using the landing page template
+- Edit the code directly from the landing pages dashboard using the code button (🔧)
 
 ## Session-Based Landing Pages
 

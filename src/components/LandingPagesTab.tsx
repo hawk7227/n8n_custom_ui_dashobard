@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { FaTrash, FaEye, FaSpinner, FaRedo, FaPlus, FaExclamationTriangle, FaEdit } from 'react-icons/fa';
+import { FaTrash, FaEye, FaSpinner, FaRedo, FaPlus, FaExclamationTriangle, FaEdit, FaCode } from 'react-icons/fa';
 import { supabase, LandingPage } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import CreateLandingPageDialog from './CreateLandingPageDialog';
+import EditHeaderCodeDialog from './EditHeaderCodeDialog';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,8 @@ export default function LandingPagesTab() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [pageToDelete, setPageToDelete] = useState<LandingPage | null>(null);
+  const [codeDialogOpen, setCodeDialogOpen] = useState(false);
+  const [pageToEditCode, setPageToEditCode] = useState<LandingPage | null>(null);
 
   // Fetch landing pages from Supabase
   const fetchLandingPages = async () => {
@@ -52,6 +55,12 @@ export default function LandingPagesTab() {
   const showDeleteConfirmation = (page: LandingPage) => {
     setPageToDelete(page);
     setDeleteDialogOpen(true);
+  };
+
+  // Show code editing dialog
+  const showCodeDialog = (page: LandingPage) => {
+    setPageToEditCode(page);
+    setCodeDialogOpen(true);
   };
 
   // Delete landing page
@@ -217,6 +226,13 @@ export default function LandingPagesTab() {
                     <FaEdit size={16} />
                   </button>
                   <button
+                    onClick={() => showCodeDialog(page)}
+                    className="p-2 text-muted-foreground hover:text-green-600 hover:bg-green-50 rounded-md transition-colors duration-200"
+                    title="Edit Header Code"
+                  >
+                    <FaCode size={16} />
+                  </button>
+                  <button
                     onClick={() => showDeleteConfirmation(page)}
                     disabled={deletingId === page.id}
                     className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors duration-200 disabled:opacity-50"
@@ -252,6 +268,14 @@ export default function LandingPagesTab() {
                     {String(page.session_id).slice(0, 8)}...
                   </span>
                 </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Header Code:</span>
+                  <span className={`text-xs px-2 py-1 rounded ${
+                    page.header_code ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {page.header_code ? 'Present' : 'None'}
+                  </span>
+                </div>
                 {page.created_at && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Created:</span>
@@ -270,6 +294,14 @@ export default function LandingPagesTab() {
       <CreateLandingPageDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
+        onSuccess={handleLandingPageCreated}
+      />
+
+      {/* Edit Header Code Dialog */}
+      <EditHeaderCodeDialog
+        open={codeDialogOpen}
+        onOpenChange={setCodeDialogOpen}
+        landingPage={pageToEditCode}
         onSuccess={handleLandingPageCreated}
       />
 

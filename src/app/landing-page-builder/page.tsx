@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { FaPaperPlane, FaUser, FaRobot, FaSpinner, FaEye, FaRedo, FaArrowLeft, FaExternalLinkAlt, FaEyeSlash } from 'react-icons/fa';
+import { FaPaperPlane, FaUser, FaRobot, FaSpinner, FaEye, FaRedo, FaArrowLeft, FaExternalLinkAlt, FaEyeSlash, FaImage, FaTimes } from 'react-icons/fa';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../lib/supabase';
 import { useSearchParams } from 'next/navigation';
@@ -11,6 +11,14 @@ interface Message {
   text: string;
   sender: 'user' | 'bot';
   timestamp: Date;
+  image?: string; // Single image URL
+}
+
+interface FileWithPreview {
+  file: File;
+  previewUrl: string;
+  status: 'pending' | 'uploading' | 'success' | 'error';
+  error?: string;
 }
 
 export default function LandingPageBuilderPage() {
@@ -18,26 +26,110 @@ export default function LandingPageBuilderPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Hello! I\'m your AI landing page builder. Describe the landing page you want to create and I\'ll help you build it!',
+      text: 'Hello! I\'m your AI landing page builder. Describe the landing page you want to create and I\'ll help you build it! You can also send an image to help me understand your vision better.',
       sender: 'bot',
       timestamp: new Date()
     }
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<FileWithPreview | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [isLongRequest, setIsLongRequest] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [sessionKey, setSessionKey] = useState<string | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
   const [brandName, setBrandName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Image handling functions
+  const validateImageFile = (file: File): string | null => {
+    if (!file.type.startsWith('image/')) {
+      return 'File must be an image';
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      return 'File size must be less than 10MB';
+    }
+    return null;
+  };
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const error = validateImageFile(file);
+    if (error) {
+      // You could add a toast notification here
+      console.error(`${file.name}: ${error}`);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setSelectedImage({
+      file,
+      previewUrl,
+      status: 'pending'
+    });
+  };
+
+  const removeSelectedImage = () => {
+    if (selectedImage) {
+      URL.revokeObjectURL(selectedImage.previewUrl);
+      setSelectedImage(null);
+    }
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!selectedImage) return null;
+
+    setIsUploadingImage(true);
+    try {
+      // Create FormData for the API request
+      const formData = new FormData();
+      formData.append('brandName', brandName || '');
+      formData.append('files[0]', selectedImage.file); // Use the field name the API expects
+
+      // Upload using API route
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('Upload error:', result.error);
+        throw new Error(result.error || 'Failed to upload image');
+      }
+
+      // Extract uploaded image URL - the API returns an array, so we need to get the first item
+      if (result.uploaded && Array.isArray(result.uploaded) && result.uploaded.length > 0) {
+        return result.uploaded[0].image_url;
+      }
+      return null;
+    } catch (error) {
+      console.error('Image upload error:', error);
+      throw error;
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const clearSelectedImage = () => {
+    if (selectedImage) {
+      URL.revokeObjectURL(selectedImage.previewUrl);
+      setSelectedImage(null);
+    }
   };
 
   // Function to load existing session from Supabase
@@ -102,6 +194,15 @@ export default function LandingPageBuilderPage() {
     scrollToBottom();
   }, [messages]);
 
+  // Cleanup image preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (selectedImage) {
+        URL.revokeObjectURL(selectedImage.previewUrl);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     // Check if there's a session parameter in the URL
     const sessionParam = searchParams.get('session');
@@ -121,10 +222,21 @@ export default function LandingPageBuilderPage() {
     }
   }, [searchParams, loadExistingSession]);
 
+  // Handle preview mode changes
+  useEffect(() => {
+    if (showPreview && previewUrl) {
+      const iframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+      if (iframe) {
+        // Refresh iframe when preview mode changes to apply new viewport
+        setIsPreviewLoading(true);
+        iframe.src = previewUrl;
+      }
+    }
+  }, [previewMode, showPreview, previewUrl]);
 
 
   const handleSendMessage = async () => {
-    if (!inputText.trim() || isLoading || !sessionKey) return;
+    if ((!inputText.trim() && !selectedImage) || isLoading || !sessionKey) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -133,8 +245,25 @@ export default function LandingPageBuilderPage() {
       timestamp: new Date()
     };
 
+    // Store reference to selectedImage before clearing it
+    const imageToSend = selectedImage;
+
+    // If there is an image, upload it first
+    if (imageToSend) {
+      try {
+        const uploadedUrl = await uploadImage();
+        if (uploadedUrl) {
+          userMessage.image = uploadedUrl;
+        }
+      } catch (error) {
+        console.error('Failed to upload image:', error);
+        // Still send the message even if image upload fails
+      }
+    }
+
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
+    clearSelectedImage(); // Clear selected image after sending
     setIsLoading(true);
     setIsLongRequest(false);
 
@@ -145,24 +274,64 @@ export default function LandingPageBuilderPage() {
 
     try {
       console.log('Sending request to:', 'https://evenbetterbuy.app.n8n.cloud/webhook/landing-page-generator');
-      console.log('Request payload:', { prompt: userMessage.text, session: sessionKey });
+      
+      // Log the request payload appropriately
+      if (userMessage.image) {
+        console.log('Request payload (FormData with image):', { 
+          prompt: userMessage.text, 
+          session: sessionKey,
+          type: 'image',
+          imageFile: imageToSend?.file.name || 'Unknown',
+        });
+      } else {
+        console.log('Request payload (JSON with text):', { 
+          prompt: userMessage.text, 
+          session: sessionKey,
+          type: 'text'
+        });
+      }
       
       // Create a timeout promise (10 minutes = 600000ms)
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Request timeout - the AI service is taking too long to respond. Please try again.')), 600000);
       });
 
+      // Prepare the request - use FormData if there is an image, JSON otherwise
+      let requestOptions: RequestInit;
+      
+      if (userMessage.image) {
+        // If there is an image, send as FormData with actual image file
+        const formData = new FormData();
+        formData.append('prompt', userMessage.text || '');
+        formData.append('session', sessionKey);
+        formData.append('type', 'image'); // Indicate this request contains an image
+        
+        // Use the stored reference to the image file
+        if (imageToSend) {
+          formData.append('data', imageToSend.file);
+        }
+        
+        requestOptions = {
+          method: 'POST',
+          body: formData,
+        };
+      } else {
+        // If no image, send as JSON
+        requestOptions = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: userMessage.text,
+            session: sessionKey,
+            type: 'text', // Indicate this is a text-only request
+          }),
+        };
+      }
+
       // Create the fetch promise with better error handling
-      const fetchPromise = fetch('https://evenbetterbuy.app.n8n.cloud/webhook/landing-page-generator', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: userMessage.text,
-          session: sessionKey,
-        }),
-      }).catch(fetchError => {
+      const fetchPromise = fetch('https://evenbetterbuy.app.n8n.cloud/webhook/landing-page-generator', requestOptions).catch(fetchError => {
         console.error('Fetch error details:', fetchError);
         // Provide more specific error messages based on the error type
         if (fetchError.name === 'TypeError' && fetchError.message.includes('Failed to fetch')) {
@@ -239,12 +408,54 @@ export default function LandingPageBuilderPage() {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      // Allow sending if there's text OR image
+      if (inputText.trim() || selectedImage) {
+        handleSendMessage();
+      }
     }
   };
 
   const handleIframeLoad = () => {
     setIsPreviewLoading(false);
+    
+    // Inject mobile viewport CSS if in mobile mode
+    if (previewMode === 'mobile') {
+      const iframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+      if (iframe && iframe.contentDocument) {
+        try {
+          const style = iframe.contentDocument.createElement('style');
+          style.textContent = `
+            * {
+              max-width: 100% !important;
+              box-sizing: border-box !important;
+            }
+            body {
+              width: 375px !important;
+              max-width: 375px !important;
+              margin: 0 auto !important;
+              overflow-x: hidden !important;
+            }
+            .container, .wrapper, [class*="container"], [class*="wrapper"] {
+              width: 100% !important;
+              max-width: 100% !important;
+              padding-left: 15px !important;
+              padding-right: 15px !important;
+            }
+            img, video, iframe {
+              max-width: 100% !important;
+              height: auto !important;
+            }
+            table {
+              width: 100% !important;
+              max-width: 100% !important;
+            }
+          `;
+          iframe.contentDocument.head.appendChild(style);
+        } catch (error) {
+          console.log('Could not inject mobile CSS (CORS restriction)');
+        }
+      }
+    }
   };
 
   const handleRefreshPreview = () => {
@@ -266,6 +477,19 @@ export default function LandingPageBuilderPage() {
     if (showPreview) {
       setIsPreviewVisible(!isPreviewVisible);
     }
+  };
+
+  const handleTogglePreviewMode = () => {
+    setPreviewMode(prev => prev === 'desktop' ? 'mobile' : 'desktop');
+    
+    // Refresh the iframe to apply the new viewport mode
+    setTimeout(() => {
+      const iframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+      if (iframe && previewUrl) {
+        setIsPreviewLoading(true);
+        iframe.src = previewUrl;
+      }
+    }, 100);
   };
 
   const handleGoBack = () => {
@@ -369,6 +593,22 @@ export default function LandingPageBuilderPage() {
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">
                     {message.text}
                   </p>
+                  
+                  {/* Display image if it exists */}
+                  {message.image && (
+                    <div className="mt-3">
+                      <img
+                        src={message.image}
+                        alt="Uploaded image"
+                        className="max-w-full max-h-48 rounded-lg object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  
                   <p className={`text-xs mt-2 ${
                     message.sender === 'user' 
                       ? 'text-primary-foreground/70' 
@@ -411,28 +651,84 @@ export default function LandingPageBuilderPage() {
 
         {/* Input Area */}
         <div className="border-t border-border p-4 bg-card/50 backdrop-blur-sm">
+          {/* Selected Image Preview */}
+          {selectedImage && (
+            <div className="mb-3 p-3 bg-muted/30 rounded-lg border border-border">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-foreground">
+                  Selected Image ({selectedImage.file.name})
+                </span>
+                <button
+                  onClick={clearSelectedImage}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="flex items-center">
+                <img
+                  src={selectedImage.previewUrl}
+                  alt="Preview"
+                  className="w-16 h-16 object-cover rounded-lg border border-border"
+                />
+                <button
+                  onClick={removeSelectedImage}
+                  className="ml-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <FaTimes size={10} />
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-end space-x-3">
             <div className="flex-1 relative">
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Describe your landing page..."
+                placeholder="Describe your landing page or upload an image..."
                 className="w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
                 rows={1}
                 style={{ minHeight: '48px', maxHeight: '120px' }}
               />
             </div>
+            
+            {/* Image Upload Button */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading || isUploadingImage}
+              className="w-12 h-12 rounded-full bg-muted text-muted-foreground flex items-center justify-center hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              title="Upload image"
+            >
+              <FaImage size={16} />
+            </button>
+            
+            {/* Send Button */}
             <button
               onClick={handleSendMessage}
-              disabled={!inputText.trim() || isLoading}
+              disabled={(!inputText.trim() && !selectedImage) || isLoading || isUploadingImage}
               className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
             >
-              <FaPaperPlane size={16} />
+              {isUploadingImage ? (
+                <FaSpinner className="animate-spin" size={16} />
+              ) : (
+                <FaPaperPlane size={16} />
+              )}
             </button>
           </div>
+          
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          
           <p className="text-xs text-muted-foreground mt-2 text-center">
-            Press Enter to send, Shift+Enter for new line
+            Press Enter to send, Shift+Enter for new line • Click the image icon to upload an image
           </p>
         </div>
       </div>
@@ -461,6 +757,27 @@ export default function LandingPageBuilderPage() {
                 <span className="hidden sm:inline">Open</span>
               </button>
               <button
+                onClick={handleTogglePreviewMode}
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-transparent hover:bg-muted/50 rounded-lg transition-all duration-200"
+                title={`Switch to ${previewMode === 'desktop' ? 'mobile' : 'desktop'} view`}
+              >
+                {previewMode === 'desktop' ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <span className="hidden sm:inline">Mobile</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span className="hidden sm:inline">Desktop</span>
+                  </>
+                )}
+              </button>
+              <button
                 onClick={handleRefreshPreview}
                 className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-transparent hover:bg-muted/50 rounded-lg transition-all duration-200"
                 title="Refresh preview"
@@ -482,14 +799,25 @@ export default function LandingPageBuilderPage() {
               </div>
             )}
             {previewUrl && (
-              <iframe
-                id="preview-iframe"
-                src={previewUrl}
-                className="w-full h-full border-0"
-                onLoad={handleIframeLoad}
-                title="Landing Page Preview"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-              />
+              <div className={`w-full h-full flex items-center justify-center ${previewMode === 'mobile' ? 'bg-gray-200' : ''}`}>
+                <div className={`h-full ${previewMode === 'mobile' ? 'w-80 max-w-full' : 'w-full'}`}>
+                  <iframe
+                    id="preview-iframe"
+                    src={previewUrl}
+                    className={`w-full h-full border-0 ${previewMode === 'mobile' ? 'rounded-lg shadow-lg' : ''}`}
+                    onLoad={handleIframeLoad}
+                    title="Landing Page Preview"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+                    style={{
+                      transform: previewMode === 'mobile' ? 'scale(1)' : 'scale(1)',
+                      transformOrigin: 'top left',
+                      width: previewMode === 'mobile' ? '375px' : '100%',
+                      maxWidth: previewMode === 'mobile' ? '375px' : 'none',
+                      margin: previewMode === 'mobile' ? '0 auto' : '0'
+                    }}
+                  />
+                </div>
+              </div>
             )}
           </div>
         </div>

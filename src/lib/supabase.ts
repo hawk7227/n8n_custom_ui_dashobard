@@ -14,6 +14,7 @@ export interface LandingPage {
   brand?: string;
   purchase_link?: string;
   session_id: string | number;
+  header_code?: string;
 }
 
 export interface Brand {
