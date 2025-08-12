@@ -83,7 +83,7 @@ export default function EditHeaderCodeDialog({
           </DialogTitle>
           <DialogDescription>
             {landingPage?.name ? (
-              <>Edit the header code for "{landingPage.name}"</>
+              <>Edit the header code for {landingPage.name}</>
             ) : (
               <>Edit the header code for this landing page</>
             )}
